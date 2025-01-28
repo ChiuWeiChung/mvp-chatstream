@@ -1,9 +1,17 @@
+export type Message ={
+  newMessage: string;
+  userName: string;
+  date: number;
+  avatar: string;
+  selectedNsId: number;
+}
+
 class Room {
   roomId: number;
   roomTitle: string;
   namespaceId: number;
   privateRoom: boolean;
-  history: string[];
+  history: Message[];
 
   constructor(roomId: number, roomTitle: string, namespaceId: number, privateRoom: boolean = false) {
     this.roomId = roomId;
@@ -13,7 +21,7 @@ class Room {
     this.history = [];
   }
 
-  addMessage(message: string): void {
+  addMessage(message: Message): void {
     // 如果需要限制歷史訊息數量，可以啟用以下代碼：
     // if (this.history.length > 1000) this.history.shift();
 

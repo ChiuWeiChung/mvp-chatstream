@@ -1,15 +1,10 @@
-import { SidebarProvider } from './components/ui/sidebar';
-import { AppSidebar } from './components/app-sidebar';
-import MainContent from './components/main-content';
-// import { io } from "socket.io-client";
+import { RouterProvider } from 'react-router';
+import { router } from '@/configs/routes';
 
-function App() {
+const App = () => {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <MainContent />
-    </SidebarProvider>
+      <RouterProvider router={router} />
   );
-}
+};
 
 export default App;

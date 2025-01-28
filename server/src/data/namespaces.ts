@@ -21,4 +21,4 @@ linuxNs.addRoom(new Room(3, 'Mac Os', 2));
 
 const namespaces = [wikiNs, mozNs, linuxNs];
 
-module.exports = namespaces;
+export default namespaces;
