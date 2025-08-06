@@ -1,0 +1,83 @@
+---
+description: Socket.IO development rules and best practices for MVP ChatStream project
+globs: 
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+alwaysApply: true
+---
+
+# Socket.IO Development Rules
+
+## Primary Reference
+- **ALWAYS** refer to the official Socket.IO v4 documentation: https://socket.io/docs/v4/
+- When implementing Socket.IO features, search the official docs for the most current and accurate implementation patterns
+- Socket.IO is NOT a plain WebSocket implementation - it adds metadata and provides additional features
+
+## Socket.IO Best Practices
+
+### 1. Connection Management
+- Use proper connection/disconnection event handlers
+- Implement automatic reconnection with exponential back-off (built-in feature)
+- Always handle connection errors gracefully
+
+### 2. Event Handling
+- Use acknowledgements for important events that need confirmation
+- Implement proper error handling for socket events
+- Use namespaces for logical separation (e.g., `/admin`, `/chat`)
+
+### 3. Room Management
+- Always leave previous rooms before joining new ones
+- Update user counts when users join/leave rooms
+- Use `socket.in(roomName)` for room-specific broadcasts
+
+### 4. Message Broadcasting
+- Use `io.emit()` for global broadcasts
+- Use `socket.to(room).emit()` for room-specific messages
+- Use `socket.broadcast.emit()` to exclude the sender
+
+### 5. Performance Considerations
+- Store message history appropriately (consider limits)
+- Use packet buffering for offline message handling
+- Implement proper CORS configuration for production
+
+## Code Standards
+
+### TypeScript Usage
+- Always define proper types for Socket.IO events and message objects
+- Use interfaces for message structures and room data
+
+### Error Handling
+- Implement try-catch blocks for Socket.IO event handlers
+- Log connection errors and disconnections properly
+- Handle network failures gracefully
+
+### Environment Configuration
+- Use environment variables for Socket.IO server URLs
+- Support both development and production configurations
+- Ensure proper CORS settings for different environments
+
+## Current Project Implementation Notes
+
+### Project Structure
+```
+mvp-chatstream/
+├── client/src/utilities/socketConnection.ts  # Socket.IO client setup
+├── client/src/hooks/use-namespace-store.ts   # Zustand state management
+├── server/src/classes/Namespace.ts           # Namespace management
+├── server/src/classes/Room.ts                # Room and message types
+└── server/src/index.ts                       # Main server with Socket.IO setup
+```
+
+### Key Features
+1. **Namespace System**: Multi-namespace support similar to Discord servers
+2. **Real-time Features**: Instant messaging, user count updates, room management
+3. **State Management**: Zustand for client-side state, in-memory for server-side
+4. **Docker Integration**: Node.js 20-alpine with proper container configuration
+
+## Reference Links
+- Socket.IO v4 Documentation: https://socket.io/docs/v4/
+- Socket.IO Server API: https://socket.io/docs/v4/server-api/
+- Socket.IO Client API: https://socket.io/docs/v4/client-api/
+- Socket.IO Troubleshooting: https://socket.io/docs/v4/troubleshooting-connection-issues/

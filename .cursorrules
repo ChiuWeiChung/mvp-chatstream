@@ -1,0 +1,20 @@
+# Cursor Rules for MVP ChatStream Project
+
+## Project Overview
+This is a real-time chat application MVP built with React + TypeScript (client) and Node.js + Express + Socket.IO (server).
+
+## Specialized Rules
+- Socket.IO specific rules and best practices are defined in `.cursor/rules/socketio-rule.mdc`
+
+## Tech Stack & Configuration
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Backend**: Node.js + Express + Socket.IO
+- **State Management**: Zustand (client-side)
+- **Docker**: Node.js 20-alpine
+- **Development**: Hot reload support in containers
+
+## Key Development Standards
+- Use TypeScript strict mode
+- Follow React best practices (proper prop typing, error boundaries)
+- Optimize performance (memo, dependency arrays, cleanup)
+- Ensure Socket.IO compatibility in Docker environment
