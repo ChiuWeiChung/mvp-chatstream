@@ -6,10 +6,12 @@ import { UserIcon } from 'lucide-react';
 
 interface UserNameModalProps {
   open: boolean;
-  onSubmit: (userName: string) => void;
+  onSubmit: (userName: string) => Promise<void>;
+  error?: string | null;
+  onErrorClear?: () => void;
 }
 
-export default function UserNameModal({ open, onSubmit }: UserNameModalProps) {
+export default function UserNameModal({ open, onSubmit, error, onErrorClear }: UserNameModalProps) {
   const [userName, setUserName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,6 +20,11 @@ export default function UserNameModal({ open, onSubmit }: UserNameModalProps) {
     
     if (!userName.trim()) return;
     
+    // 清除之前的错误信息
+    if (error && onErrorClear) {
+      onErrorClear();
+    }
+    
     setIsLoading(true);
     try {
       await onSubmit(userName.trim());
@@ -25,6 +32,15 @@ export default function UserNameModal({ open, onSubmit }: UserNameModalProps) {
       console.error('Error submitting user name:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserName(e.target.value);
+    
+    // 当用户重新输入时清除错误信息
+    if (error && onErrorClear) {
+      onErrorClear();
     }
   };
 
@@ -51,10 +67,16 @@ export default function UserNameModal({ open, onSubmit }: UserNameModalProps) {
               type="text"
               placeholder="輸入您的名稱..."
               value={userName}
-              onChange={(e) => setUserName(e.target.value)}
+              onChange={handleInputChange}
               disabled={isLoading}
               autoFocus
+              className={error ? 'border-destructive' : ''}
             />
+            {error && (
+              <p className="text-xs text-destructive">
+                {error}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               名稱將作為您在聊天室中的身份識別
             </p>

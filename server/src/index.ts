@@ -56,6 +56,7 @@ namespaces.forEach((namespace) => {
     console.log(`User connected to namespace: ${namespace.endpoint}`);
 
     nsSocket.on('joinRoom', async ({ roomTitle, namespaceId, user }, ackCallback) => {
+      console.log(`🔍 joinRoom request: user="${user.name}", socketId="${nsSocket.id}", room="${roomTitle}"`);
       try {
         const currentNamespace = namespaces[namespaceId];
         const currentRoom = currentNamespace.rooms.find((room) => room.roomTitle === roomTitle);
@@ -76,21 +77,18 @@ namespaces.forEach((namespace) => {
         };
 
         // 先從所有房間移除該 socket 的使用者（如果存在）
-        currentNamespace.rooms.forEach(room => {
-          room.removeUserBySocketId(nsSocket.id);
+        namespaces.forEach(namespace => {
+          namespace.rooms.forEach(room => {
+            room.removeUserBySocketId(nsSocket.id);
+          });
         });
 
-        // 如果目標房間已有相同名稱的使用者，也要移除（處理重複登入）
-        currentRoom.removeUser(user.id);
-
-        // 加入使用者到目標房間（現在應該總是成功）
+        // 加入使用者到目標房間
         const canJoin = currentRoom.addUser(userWithSocketId);
         if (!canJoin) {
-          // 這種情況理論上不應該發生，因為我們已經移除了可能的重複使用者
-          console.error('Unexpected: Failed to add user after cleanup');
           ackCallback({ 
             success: false, 
-            error: 'Failed to join room: unexpected error' 
+            error: 'Failed to join room: user already exists' 
           });
           return;
         }
