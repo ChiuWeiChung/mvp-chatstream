@@ -6,8 +6,34 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
 import { NsData } from '../app-sidebar/types';
 import { NavLink } from 'react-router';
+import { AddRoomDialog } from '../add-room-dialog';
+import io from 'socket.io-client';
 
 export function NamespaceList({ namespaces }: { namespaces: NsData }) {
+  const handleCreateRoom = async (namespaceId: number, roomTitle: string): Promise<{ success: boolean; error?: string }> => {
+    return new Promise((resolve) => {
+      const namespace = namespaces.find(ns => ns.id === namespaceId);
+      if (!namespace?.endpoint) {
+        resolve({ success: false, error: 'Namespace not found' });
+        return;
+      }
+
+      // Connect to the specific namespace
+      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const namespaceSocket = io(`${socketUrl}${namespace.endpoint}`);
+      
+      namespaceSocket.emit('createRoom', { roomTitle, namespaceId }, (response: { success: boolean; error?: string }) => {
+        if (response.success) {
+          // The real-time update will be handled by the 'roomCreated' event
+          resolve({ success: true });
+        } else {
+          resolve({ success: false, error: response.error });
+        }
+        namespaceSocket.disconnect();
+      });
+    });
+  };
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Channel</SidebarGroupLabel>
@@ -20,7 +46,10 @@ export function NamespaceList({ namespaces }: { namespaces: NsData }) {
                 <SidebarMenuButton tooltip={ns.name} className='h-12' >
                   <img src={ns.image} className="w-6 h-full object-contain" />
                   <span className='ml-1'>{ns.name}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  <div className="ml-auto flex items-center gap-1">
+                    <AddRoomDialog namespace={ns} onCreateRoom={handleCreateRoom} />
+                    <ChevronRight className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </div>
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>

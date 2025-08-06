@@ -9,9 +9,10 @@ interface NamespaceState {
     namespace: Namespace | null; // 當前選擇的 namespace
     room: Room | null; // 當前選擇的 namespace
   };
-  setNamespaces: (namespaces: Namespace[]) => void; // 設置所有 nam
+  setNamespaces: (namespaces: Namespace[]) => void; // 設置所有 namespace
   setCurrent: (state: { room: Room; namespace: Namespace }) => void;
   resetNamespace: () => void; // 重置所選的 namespace
+  addRoomToNamespace: (namespaceId: number, room: Room) => void; // 新增房間到指定 namespace
 }
 
 // 創建 store
@@ -27,5 +28,13 @@ export const useNamespaceStore = create<NamespaceState>((set) => ({
   setCurrent: ({ room, namespace }) => set({ selected: { room, namespace } }),
   // 重置目前選擇
   resetNamespace: () => set({ selected: { namespace: null, room: null } }),
+  // 新增房間到指定的 namespace
+  addRoomToNamespace: (namespaceId, newRoom) => set((state) => ({
+    namespaces: state.namespaces.map((namespace) => 
+      namespace.id === namespaceId 
+        ? { ...namespace, rooms: [...(namespace.rooms || []), newRoom] }
+        : namespace
+    )
+  })),
 }));
 

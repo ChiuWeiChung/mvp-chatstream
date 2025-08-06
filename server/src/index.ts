@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import namespaces from './data/namespaces';
 import { Server } from 'socket.io';
 import { Message } from './classes/Room';
+import Room from './classes/Room';
 
 const app = express();
 const PORT = 3001;
@@ -86,6 +87,49 @@ namespaces.forEach((namespace) => {
       const currentNamespace = namespaces[messageObj.selectedNsId];
       const currentRoom = currentNamespace.rooms.find((room) => room.roomTitle === currentRoomName);
       currentRoom?.addMessage(messageObj);
+    });
+
+    // 處理新增房間的請求
+    nsSocket.on('createRoom', ({ roomTitle, namespaceId }, ackCallback) => {
+      try {
+        const currentNamespace = namespaces[namespaceId];
+        if (!currentNamespace) {
+          ackCallback({ success: false, error: 'Namespace not found' });
+          return;
+        }
+
+        // 檢查房間名稱是否已存在
+        const existingRoom = currentNamespace.rooms.find(room => room.roomTitle === roomTitle);
+        if (existingRoom) {
+          ackCallback({ success: false, error: 'Room already exists' });
+          return;
+        }
+
+        // 創建新房間 (roomId 為當前房間數量)
+        const newRoomId = currentNamespace.rooms.length;
+        const newRoom = new Room(newRoomId, roomTitle, namespaceId);
+        
+        // 將新房間加入到 namespace
+        currentNamespace.addRoom(newRoom);
+
+        // 向所有連接到此 namespace 的用戶廣播新房間資訊
+        nsp.emit('roomCreated', {
+          namespaceId,
+          newRoom: {
+            roomId: newRoom.roomId,
+            roomTitle: newRoom.roomTitle,
+            namespaceId: newRoom.namespaceId,
+            privateRoom: newRoom.privateRoom,
+            history: newRoom.history
+          }
+        });
+
+        ackCallback({ success: true, room: newRoom });
+        console.log(`New room created: ${roomTitle} in namespace ${currentNamespace.name}`);
+      } catch (error) {
+        console.error('Error creating room:', error);
+        ackCallback({ success: false, error: 'Failed to create room' });
+      }
     });
 
     // 監聽用戶離開房間時的處理
