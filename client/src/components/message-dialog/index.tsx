@@ -1,3 +1,4 @@
+import { UserIcon } from 'lucide-react';
 import { ChatHistoryItem } from '../app-sidebar/types';
 
 const MessageDialog = (props:{messages: ChatHistoryItem[]}) => {
@@ -5,8 +6,8 @@ const MessageDialog = (props:{messages: ChatHistoryItem[]}) => {
     return props.messages.map((message: ChatHistoryItem) => {
       return (
         <div className="flex gap-4 my-2 shadow-sm" key={message.date}>
-          <div className="w-10 h-10 rounded-full bg-primary-foreground">
-            <img src={message.avatar} className=' w-full h-full object-cover rounded-full '/>
+          <div className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-white">
+            {message.avatar ? <img src={message.avatar} className=' w-full h-full object-cover rounded-full '/> : <UserIcon className="h-5 w-5" />}
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">

@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import namespaces from './data/namespaces';
 import { Server } from 'socket.io';
-import { Message } from './classes/Room';
+import { Message, User } from './classes/Room';
 import Room from './classes/Room';
 
 const app = express();
@@ -55,27 +55,73 @@ namespaces.forEach((namespace) => {
   nsp.on('connection', (nsSocket) => {
     console.log(`User connected to namespace: ${namespace.endpoint}`);
 
-    nsSocket.on('joinRoom', async ({ roomTitle, namespaceId }, ackCallback) => {
-      const currentNamespace = namespaces[namespaceId];
-      const currentRoom = currentNamespace.rooms.find((room) => room.roomTitle === roomTitle);
-      const currentRoomHistory = currentRoom?.history ?? [];
+    nsSocket.on('joinRoom', async ({ roomTitle, namespaceId, user }, ackCallback) => {
+      try {
+        const currentNamespace = namespaces[namespaceId];
+        const currentRoom = currentNamespace.rooms.find((room) => room.roomTitle === roomTitle);
+        
+        if (!currentRoom) {
+          ackCallback({ 
+            success: false, 
+            error: 'Room not found' 
+          });
+          return;
+        }
 
-      // 移除該 socket 先前加入的所有房間（第一個房間是 socket 自己的 ID，不移除）
-      [...nsSocket.rooms].forEach((room, index) => {
-        if (index !== 0) nsSocket.leave(room);
-      });
+        // 檢查使用者是否已在房間內
+        const userWithSocketId: User = {
+          id: user.id,
+          name: user.name,
+          socketId: nsSocket.id
+        };
 
-      // 加入新房間
-      nsSocket.join(roomTitle);
-      const { length } = await nsp.in(roomTitle).fetchSockets();
+        // 先從所有房間移除該 socket 的使用者（如果存在）
+        currentNamespace.rooms.forEach(room => {
+          room.removeUserBySocketId(nsSocket.id);
+        });
 
-      // 將使用者數量更新至房間內的 users
-      nsp.in(roomTitle).emit('numUsersUpdate', length);
+        // 如果目標房間已有相同名稱的使用者，也要移除（處理重複登入）
+        currentRoom.removeUser(user.id);
 
-      ackCallback({
-        numUsers: length,
-        thisRoomHistory: currentRoomHistory,
-      });
+        // 加入使用者到目標房間（現在應該總是成功）
+        const canJoin = currentRoom.addUser(userWithSocketId);
+        if (!canJoin) {
+          // 這種情況理論上不應該發生，因為我們已經移除了可能的重複使用者
+          console.error('Unexpected: Failed to add user after cleanup');
+          ackCallback({ 
+            success: false, 
+            error: 'Failed to join room: unexpected error' 
+          });
+          return;
+        }
+
+        // 移除該 socket 先前加入的所有房間（第一個房間是 socket 自己的 ID，不移除）
+        [...nsSocket.rooms].forEach((room, index) => {
+          if (index !== 0) nsSocket.leave(room);
+        });
+
+        // 加入新房間
+        nsSocket.join(roomTitle);
+
+        // 向房間內所有使用者廣播使用者列表更新
+        const roomUsers = currentRoom.getUsers();
+        nsp.in(roomTitle).emit('roomUsersUpdate', roomUsers);
+
+        ackCallback({
+          success: true,
+          numUsers: roomUsers.length,
+          thisRoomHistory: currentRoom.history,
+          users: roomUsers
+        });
+
+        console.log(`User ${user.name} joined room ${roomTitle} in namespace ${currentNamespace.name}`);
+      } catch (error) {
+        console.error('Error joining room:', error);
+        ackCallback({ 
+          success: false, 
+          error: 'Failed to join room' 
+        });
+      }
     });
 
     // 接收新訊息並廣播到對應房間
@@ -134,10 +180,18 @@ namespaces.forEach((namespace) => {
 
     // 監聽用戶離開房間時的處理
     nsSocket.on('disconnecting', async () => {
-      const leftRoom = [...nsSocket.rooms][1];
-      if (leftRoom && leftRoom !== nsSocket.id) {
-        const { length } = await nsp.in(leftRoom).fetchSockets();
-        nsp.in(leftRoom).emit('numUsersUpdate', length - 1);
+      const leftRoomName = [...nsSocket.rooms][1];
+      if (leftRoomName && leftRoomName !== nsSocket.id) {
+        // 從房間中移除使用者
+        namespace.rooms.forEach(room => {
+          if (room.roomTitle === leftRoomName) {
+            room.removeUserBySocketId(nsSocket.id);
+            // 向房間內剩餘使用者廣播使用者列表更新
+            const remainingUsers = room.getUsers();
+            nsp.in(leftRoomName).emit('roomUsersUpdate', remainingUsers);
+            console.log(`User disconnected from room ${leftRoomName}, remaining users: ${remainingUsers.length}`);
+          }
+        });
       }
     });
   });

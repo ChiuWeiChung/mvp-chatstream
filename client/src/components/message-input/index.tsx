@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-const MessageInput = (props: { onMessageSend: (newMessage: string) => void }) => {
+interface MessageInputProps {
+  onMessageSend: (newMessage: string) => void;
+  disabled?: boolean;
+}
+
+const MessageInput = (props: MessageInputProps) => {
   const [msg, setMsg] = useState('');
   const handleMsg = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMsg(e.target.value);
@@ -10,17 +15,25 @@ const MessageInput = (props: { onMessageSend: (newMessage: string) => void }) =>
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (msg) {
+    if (msg && !props.disabled) {
       props.onMessageSend(msg);
       setMsg('');
     }
-    
   };
 
   return (
     <form className="w-full flex gap-2" onSubmit={onSubmit}>
-      <Input value={msg} onChange={handleMsg} />
-      <Button className="w-20" type="submit">
+      <Input 
+        value={msg} 
+        onChange={handleMsg} 
+        disabled={props.disabled}
+        placeholder={props.disabled ? "請先設定您的名稱..." : "輸入訊息..."}
+      />
+      <Button 
+        className="w-20" 
+        type="submit" 
+        disabled={props.disabled || !msg.trim()}
+      >
         SEND
       </Button>
     </form>

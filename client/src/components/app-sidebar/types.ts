@@ -2,7 +2,7 @@
 export type ChatHistoryItem = {
   newMessage: string;
   date: number; // timestamp
-  avatar: string;
+  avatar?: string;
   userName: string;
   selectedNsId: number;
 };
