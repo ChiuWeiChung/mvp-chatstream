@@ -50,6 +50,7 @@ export default function UserNameModal({ open, onSubmit, error, onErrorClear }: U
         className="sm:max-w-[425px]" 
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
+        showCloseButton={false}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
