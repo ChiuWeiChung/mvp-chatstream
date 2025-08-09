@@ -176,7 +176,7 @@ export const Component = () => {
       {/* 視訊與聊天室   */}
       <main className="flex flex-col md:flex-row gap-4 transition-all flex-1 md:overflow-hidden">
         {roomDetail.host && <VideoStream hostId={roomDetail.host.id} />}
-        <div className=" h-[20rem] md:h-auto flex flex-col gap-4">
+        <div className="flex-1 h-[20rem] md:h-auto flex flex-col gap-4">
           <MessageDialog messages={roomDetail.history} />
           <MessageInput onMessageSend={onMessageSend} disabled={!user} />
         </div>

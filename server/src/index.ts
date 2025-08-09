@@ -15,7 +15,8 @@ const expressServer = app.listen(PORT, () => {
 // 創建 Socket.IO 伺服器，允許 CORS
 const io = new Server(expressServer, {
   cors: {
-    origin: 'http://localhost:3000', // 允許前端來源
+    // origin: ['http://localhost:3000', 'http://localhost:8080'], // 暫時允許所有來源
+    origin: '*', // for 測試需求，允許所有來源
     methods: ['GET', 'POST'],
     credentials: true,
   },

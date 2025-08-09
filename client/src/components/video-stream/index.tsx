@@ -8,12 +8,6 @@ interface VideoStreamProps {
   className?: string;
 }
 
-/**
- * React + media-chrome/react 版本
- * - 使用 hls.js 播放 HLS；Safari 走原生 HLS
- * - 使用 MediaController/MediaControlBar 等 React 包裝元件
- * - 卸載時清理 hls 實例
- */
 export default function LivePlayer({ className = '', hostId }: VideoStreamProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -53,15 +47,14 @@ export default function LivePlayer({ className = '', hostId }: VideoStreamProps)
   }, [hostId]);
 
   return (
-    <div className={`md:flex-1 justify-center bg-muted/50 p-4 min-w-[300px] text-center ${className}`}>
-      {/* <MediaController className="block h-full rounded-xl overflow-hidden shadow aspect-video mx-auto"> */}
-      <MediaController className="block w-full max-w-[1024px] rounded-xl overflow-hidden shadow aspect-video mx-auto pb-4">
+    <div className={`flex items-center justify-center bg-muted/50 p-4 min-w-[300px] w-full max-w-[768px] text-center ${className}`}>
+      <MediaController className="block w-full rounded-xl overflow-hidden shadow aspect-video mx-auto pb-4">
         {/* 將 <video> 指定為受控媒體：slot="media" */}
         <video
           ref={videoRef}
           slot="media"
           autoPlay
-          muted
+          muted // 自動播放需 muted 才會成功
           playsInline
           // poster="/poster.jpg"
           // preload="metadata"
@@ -78,7 +71,6 @@ export default function LivePlayer({ className = '', hostId }: VideoStreamProps)
 
       {/* Tips:
          1) 跨網域資源需正確 CORS header（m3u8/TS）。
-         2) 自動播放通常需 muted 才會成功。
       */}
     </div>
   );
