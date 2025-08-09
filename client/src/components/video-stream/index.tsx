@@ -15,8 +15,11 @@ export default function LivePlayer({ className = '', hostId }: VideoStreamProps)
     const video = videoRef.current;
     if (!video) return;
 
+    console.log('hostId', hostId);
     let hls: Hls;
-    const src = `http://localhost:8080/hls/${hostId}.m3u8`;
+    // 使用當前頁面的 origin 來構建 HLS 串流 URL，支援手機連接
+    const baseUrl = window.location.origin;
+    const src = `${baseUrl}/hls/${hostId}.m3u8`;
 
     if (Hls.isSupported()) {
       hls = new Hls({

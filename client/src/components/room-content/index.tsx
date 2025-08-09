@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router';
 import { ChatHistoryItem } from '../app-sidebar/types';
 import { UserIcon } from 'lucide-react';
 import VideoStream from '../video-stream';
+import { socketUrl } from '@/utilities/socketConnection';
 
 interface RoomDetail {
   numUsers: number | null;
@@ -36,10 +37,7 @@ export const Component = () => {
       const currentNamespace = namespaces.find((ns) => ns.id === namespaceId);
       if (!currentNamespace) throw new Error(`Namespace with id ${namespaceId} not found`);
 
-      const socketHost = import.meta.env.VITE_API_URL;
-      if (!socketHost) throw new Error('Socket Server Host is not set');
-
-      const namespaceSocket = io(`${socketHost}${currentNamespace.endpoint}`);
+      const namespaceSocket = io(`${socketUrl}${currentNamespace.endpoint}`);
 
       const emitRequest = { roomTitle, namespaceId, user: currentUser };
       const ackResponse = await namespaceSocket.emitWithAck('joinRoom', emitRequest);

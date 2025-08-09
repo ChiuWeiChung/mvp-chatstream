@@ -9,6 +9,7 @@ import { NavLink } from 'react-router';
 import { AddRoomDialog } from '../add-room-dialog';
 import io from 'socket.io-client';
 import { User } from '@/hooks/use-user-store';
+import { socketUrl } from '@/utilities/socketConnection';
 
 export function NamespaceList({ namespaces }: { namespaces: NsData }) {
   const handleCreateRoom = async (namespaceId: number, roomTitle: string, host: User): Promise<{ success: boolean; error?: string; room?: { roomId: string } }> => {
@@ -20,7 +21,6 @@ export function NamespaceList({ namespaces }: { namespaces: NsData }) {
       }
 
       // Connect to the specific namespace
-      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const namespaceSocket = io(`${socketUrl}${namespace.endpoint}`);
       
       namespaceSocket.emit('createRoom', { roomTitle, namespaceId, host }, (response: { success: boolean; error?: string; room: { roomId :string;} }) => {

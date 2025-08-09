@@ -1,7 +1,7 @@
 // import { Calendar, Home, Inbox, Search, Settings } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu } from '@/components/ui/sidebar';
 import { useEffect, useRef } from 'react';
-import socket from '@/utilities/socketConnection';
+import socket, { socketUrl } from '@/utilities/socketConnection';
 import { NsData } from './types';
 import { NamespaceList } from '../namespace-list';
 import { MessageSquareDot } from 'lucide-react';
@@ -37,7 +37,6 @@ export function AppSidebar() {
       // Connect to each namespace to listen for room creation events
       namespaces.forEach((ns) => {
         if (ns.endpoint) {
-          const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
           const nsSocket = io(`${socketUrl}${ns.endpoint}`);
           nsSocket.on('roomCreated', ({ namespaceId, newRoom }: { namespaceId: number; newRoom: Room }) => {
             addRoomToNamespace(namespaceId, newRoom);
