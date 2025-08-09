@@ -8,9 +8,10 @@ import { NsData } from '../app-sidebar/types';
 import { NavLink } from 'react-router';
 import { AddRoomDialog } from '../add-room-dialog';
 import io from 'socket.io-client';
+import { User } from '@/hooks/use-user-store';
 
 export function NamespaceList({ namespaces }: { namespaces: NsData }) {
-  const handleCreateRoom = async (namespaceId: number, roomTitle: string): Promise<{ success: boolean; error?: string }> => {
+  const handleCreateRoom = async (namespaceId: number, roomTitle: string, host: User): Promise<{ success: boolean; error?: string; room?: { roomId: string } }> => {
     return new Promise((resolve) => {
       const namespace = namespaces.find(ns => ns.id === namespaceId);
       if (!namespace?.endpoint) {
@@ -22,10 +23,10 @@ export function NamespaceList({ namespaces }: { namespaces: NsData }) {
       const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const namespaceSocket = io(`${socketUrl}${namespace.endpoint}`);
       
-      namespaceSocket.emit('createRoom', { roomTitle, namespaceId }, (response: { success: boolean; error?: string }) => {
-        if (response.success) {
+      namespaceSocket.emit('createRoom', { roomTitle, namespaceId, host }, (response: { success: boolean; error?: string; room: { roomId :string;} }) => {
+        if (response.success ) {
           // The real-time update will be handled by the 'roomCreated' event
-          resolve({ success: true });
+          resolve({ success: true, room: response.room });
         } else {
           resolve({ success: false, error: response.error });
         }

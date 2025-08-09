@@ -4,20 +4,28 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Namespace } from '@/components/app-sidebar/types';
+import { User, useUserStore } from '@/hooks/use-user-store';
+import { useNavigate } from 'react-router';
 
 interface AddRoomDialogProps {
   namespace: Namespace;
-  onCreateRoom: (namespaceId: number, roomTitle: string) => Promise<{ success: boolean; error?: string }>;
+  onCreateRoom: (namespaceId: number, roomTitle: string, host: User) => Promise<{ success: boolean; error?: string; room?: { roomId: string } }>;
 }
 
 export function AddRoomDialog({ namespace, onCreateRoom }: AddRoomDialogProps) {
   const [open, setOpen] = useState(false);
+  const { user } = useUserStore();
   const [roomTitle, setRoomTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const navigate = useNavigate();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      setError('Please login first');
+      return;
+    }
 
     if (!roomTitle.trim()) {
       setError('Room title is required');
@@ -28,11 +36,12 @@ export function AddRoomDialog({ namespace, onCreateRoom }: AddRoomDialogProps) {
     setError(null);
 
     try {
-      const result = await onCreateRoom(namespace.id, roomTitle.trim());
+      const result = await onCreateRoom(namespace.id, roomTitle.trim(), user);
 
-      if (result.success) {
+      if (result.success && result.room) {
         setRoomTitle('');
         setOpen(false);
+        navigate(`${namespace.endpoint}/${result.room.roomId}`);
       } else {
         setError(result.error || 'Failed to create room');
       }
@@ -52,6 +61,8 @@ export function AddRoomDialog({ namespace, onCreateRoom }: AddRoomDialogProps) {
       setError(null);
     }
   };
+
+  if (!user) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

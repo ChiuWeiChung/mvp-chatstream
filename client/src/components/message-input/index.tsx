@@ -22,7 +22,7 @@ const MessageInput = (props: MessageInputProps) => {
   };
 
   return (
-    <form className="w-full flex gap-2" onSubmit={onSubmit}>
+    <form className="w-full flex gap-2 mb-1" onSubmit={onSubmit}>
       <Input 
         value={msg} 
         onChange={handleMsg} 

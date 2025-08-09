@@ -4,6 +4,7 @@ import { createJSONStorage, devtools, persist } from 'zustand/middleware';
 export type User = {
   id: string; // 等於使用者名稱 (唯一)
   name: string; // 與 id 相同
+  // socketId: string; // Socket ID 用於管理連線
 };
 
 interface UserState {

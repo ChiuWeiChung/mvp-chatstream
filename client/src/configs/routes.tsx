@@ -9,8 +9,7 @@ export const router = createBrowserRouter([
     element: <Home />,
     errorElement:<NotFoundPage/>,
     children: [
-      { path: ':namespace/:roomId', lazy: async () => await import('@/components/main-content') }, // 動態處理不同聊天室
-      // { path: 'notfound', element: <NotFoundPage /> },
+      { path: ':namespace/:roomId', lazy: async () => await import('@/components/room-content') }, // 動態處理不同聊天室
     ],
   },
 ]);

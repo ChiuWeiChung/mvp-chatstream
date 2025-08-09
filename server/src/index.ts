@@ -55,6 +55,7 @@ namespaces.forEach((namespace) => {
   nsp.on('connection', (nsSocket) => {
     console.log(`User connected to namespace: ${namespace.endpoint}`);
 
+    // ====== 接收用戶加入房間的請求 ======
     nsSocket.on('joinRoom', async ({ roomTitle, namespaceId, user }, ackCallback) => {
       console.log(`🔍 joinRoom request: user="${user.name}", socketId="${nsSocket.id}", room="${roomTitle}"`);
       try {
@@ -93,7 +94,7 @@ namespaces.forEach((namespace) => {
           return;
         }
 
-        // 移除該 socket 先前加入的所有房間（第一個房間是 socket 自己的 ID，不移除）
+        // NOTE: 移除該 socket 先前加入的所有房間（第一個房間是 socket 自己的 ID，不移除）
         [...nsSocket.rooms].forEach((room, index) => {
           if (index !== 0) nsSocket.leave(room);
         });
@@ -109,7 +110,8 @@ namespaces.forEach((namespace) => {
           success: true,
           numUsers: roomUsers.length,
           thisRoomHistory: currentRoom.history,
-          users: roomUsers
+          users: roomUsers,
+          host: currentRoom.host,
         });
 
         console.log(`User ${user.name} joined room ${roomTitle} in namespace ${currentNamespace.name}`);
@@ -122,7 +124,7 @@ namespaces.forEach((namespace) => {
       }
     });
 
-    // 接收新訊息並廣播到對應房間
+    // ====== 接收新訊息並廣播到對應房間 ======
     nsSocket.on('newMessageToRoom', (messageObj: Message) => {
       const currentRoomName = [...nsSocket.rooms][1]; // 取得用戶所在的房間名稱
       nsp.in(currentRoomName).emit('messageToRoom', messageObj);
@@ -133,8 +135,8 @@ namespaces.forEach((namespace) => {
       currentRoom?.addMessage(messageObj);
     });
 
-    // 處理新增房間的請求
-    nsSocket.on('createRoom', ({ roomTitle, namespaceId }, ackCallback) => {
+    // ====== 處理新增房間的請求 ======
+    nsSocket.on('createRoom', ({ roomTitle, namespaceId, host }, ackCallback) => {
       try {
         const currentNamespace = namespaces[namespaceId];
         if (!currentNamespace) {
@@ -151,7 +153,7 @@ namespaces.forEach((namespace) => {
 
         // 創建新房間 (roomId 為當前房間數量)
         const newRoomId = currentNamespace.rooms.length;
-        const newRoom = new Room(newRoomId, roomTitle, namespaceId);
+        const newRoom = new Room(newRoomId, roomTitle, namespaceId, host);
         
         // 將新房間加入到 namespace
         currentNamespace.addRoom(newRoom);
@@ -163,7 +165,6 @@ namespaces.forEach((namespace) => {
             roomId: newRoom.roomId,
             roomTitle: newRoom.roomTitle,
             namespaceId: newRoom.namespaceId,
-            privateRoom: newRoom.privateRoom,
             history: newRoom.history
           }
         });
