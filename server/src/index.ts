@@ -3,14 +3,45 @@ import namespaces from './data/namespaces';
 import { Server } from 'socket.io';
 import { Message, User } from './classes/Room';
 import Room from './classes/Room';
+import cors from 'cors';
+import { config } from 'dotenv';
+import { toNodeHandler } from 'better-auth/node';
+import { auth } from './auth';
 
+// 載入環境變數
+config();
 const app = express();
 const PORT = 3001;
+
 
 // 啟動 Express 伺服器
 const expressServer = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// 調試：檢查環境變數是否正確載入（可選）
+if (process.env.NODE_ENV !== 'production') {
+  console.log('Environment variables loaded:');
+  console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Not set');
+  console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Not set');
+  console.log('BETTER_AUTH_SECRET:', process.env.BETTER_AUTH_SECRET ? 'Set' : 'Not set');
+}
+
+
+// 設定 CORS 中間件
+app.use(
+  cors({
+    origin: ['http://localhost:3000'],
+    credentials: true,
+  }),
+);
+
+// 在 Better Auth handler 之後設定 JSON 解析中間件
+app.use(express.json());
+
+// 設定 better-auth 路由 - 使用官方的 toNodeHandler
+app.all('/api/auth/*', toNodeHandler(auth));
+
 
 // 創建 Socket.IO 伺服器，允許 CORS
 const io = new Server(expressServer, {
