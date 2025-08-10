@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Namespace } from '@/components/app-sidebar/types';
-import { User, useUserStore } from '@/hooks/use-user-store';
 import { useNavigate } from 'react-router';
+import { useAuthStore } from '@/hooks/use-auth-store';
+import { User } from '@/lib/auth';
 
 interface AddRoomDialogProps {
   namespace: Namespace;
@@ -14,7 +15,7 @@ interface AddRoomDialogProps {
 
 export function AddRoomDialog({ namespace, onCreateRoom }: AddRoomDialogProps) {
   const [open, setOpen] = useState(false);
-  const { user } = useUserStore();
+  const { user } = useAuthStore();
   const [roomTitle, setRoomTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,27 +72,27 @@ export function AddRoomDialog({ namespace, onCreateRoom }: AddRoomDialogProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Room</DialogTitle>
+          <DialogTitle>建立房間</DialogTitle>
           <DialogDescription>
-            Add a new room to the <strong>{namespace.name}</strong> channel.
+            新增房間到 <strong>{namespace.name}</strong> 頻道。
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <label htmlFor="roomTitle" className="text-sm font-medium">
-                Room Title
+                房間名稱
               </label>
-              <Input id="roomTitle" placeholder="Enter room title..." value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} disabled={isCreating} autoFocus />
+              <Input id="roomTitle" placeholder="輸入房間名稱..." value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} disabled={isCreating} autoFocus />
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isCreating}>
-              Cancel
+              取消
             </Button>
             <Button type="submit" disabled={isCreating || !roomTitle.trim()}>
-              {isCreating ? 'Creating...' : 'Create Room'}
+              {isCreating ? '建立中...' : '建立房間'}
             </Button>
           </DialogFooter>
         </form>

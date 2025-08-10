@@ -1,32 +1,36 @@
-import { useEffect,  useState } from 'react';
+import { useEffect, useState } from 'react';
 import MessageInput from '@/components/message-input';
 import MessageDialog from '@/components/message-dialog';
 // import UserNameModal from '@/components/user-name-modal';
 import { Params, useParams } from 'react-router';
 import { io, Socket } from 'socket.io-client';
 import { useNamespaceStore } from '@/hooks/use-namespace-store';
-import { useUserStore, type User } from '@/hooks/use-user-store';
 import { useNavigate } from 'react-router';
 import { ChatHistoryItem } from '../app-sidebar/types';
-import { UserIcon } from 'lucide-react';
+import { ScreenShareOffIcon, UserIcon } from 'lucide-react';
 import VideoStream from '../video-stream';
-import { socketUrl } from '@/utilities/socketConnection';
+// import { socketUrl } from '@/utilities/socketConnection';
+import { useAuthStore } from '@/hooks/use-auth-store';
+import { User } from '@/lib/auth';
+import { socketUrl } from '@/lib/socket';
+
 
 interface RoomDetail {
   numUsers: number | null;
   history: ChatHistoryItem[];
   users: User[];
   host: User | null;
+  isHostInRoom: boolean;
 }
 
 export const Component = () => {
   const navigate = useNavigate();
   const { namespace, roomId } = useParams<Params>();
-  const { user } = useUserStore();
+  const { user } = useAuthStore();
   const { namespaces, selected, setSelected } = useNamespaceStore();
 
   const [nsSocket, setNsSocket] = useState<Socket>();
-  const [roomDetail, setRoomDetail] = useState<RoomDetail>({ numUsers: null, history: [], users: [], host: null });
+  const [roomDetail, setRoomDetail] = useState<RoomDetail>({ numUsers: null, history: [], users: [], host: null, isHostInRoom: false });
   const [joinError, setJoinError] = useState<string | null>(null);
 
   const joinRoom = async (roomTitle: string, namespaceId: number, currentUser: User) => {
@@ -46,12 +50,13 @@ export const Component = () => {
         namespaceSocket.disconnect();
         setJoinError(ackResponse.error || '加入房間失敗');
       } else {
-        const { numUsers, thisRoomHistory, users, host } = ackResponse;
+        const { numUsers, thisRoomHistory, users, host, isHostInRoom } = ackResponse;
         setRoomDetail({
           numUsers: numUsers || 0,
           history: thisRoomHistory || [],
           users: users || [],
           host: host || null,
+          isHostInRoom: isHostInRoom || false,
         });
 
         setJoinError(null); // 清除錯誤訊息
@@ -81,11 +86,12 @@ export const Component = () => {
     if (namespaces.length) {
       const foundNs = namespaces.find((ns) => ns.endpoint?.replace('/', '') === namespace);
       const foundRoom = foundNs?.rooms?.find((room) => String(room.roomId) === roomId);
+
       if (foundRoom && foundNs) {
         setSelected({ namespace: foundNs, room: foundRoom });
         const isDifferentRoom = selected?.room.roomId !== foundRoom.roomId;
         const isDifferentNamespace = selected?.namespace.id !== foundNs.id;
-        if (user && (isDifferentRoom || isDifferentNamespace)) {
+        if (user && (isDifferentRoom || isDifferentNamespace||!nsSocket)) {
           joinRoom(foundRoom.roomTitle, foundNs.id, user);
         }
       } else navigate('/notfound');
@@ -100,11 +106,12 @@ export const Component = () => {
         setRoomDetail((prev) => ({ ...prev, history: [...prev.history, newMessage] }));
       });
 
-      nsSocket.on('roomUsersUpdate', (usersInRoom: User[]) => {
+      nsSocket.on('roomUsersUpdate', ({ roomUsers, isHostInRoom }: { roomUsers: User[]; isHostInRoom: boolean }) => {
         setRoomDetail((prev) => ({
           ...prev,
-          numUsers: usersInRoom.length,
-          users: usersInRoom,
+          numUsers: roomUsers.length,
+          users: roomUsers,
+          isHostInRoom: isHostInRoom,
         }));
       });
 
@@ -115,20 +122,8 @@ export const Component = () => {
     }
   }, [nsSocket]);
 
-  // const hostSocketId = useMemo(() => {
-  //   if (!roomDetail.users.length || !roomDetail.host) return null;
-  //   const hostId = roomDetail.host.id;
-  //   const foundHost = roomDetail.users.find((user) => user.id === hostId);
-  //   if (!foundHost) return null;
-  //   return foundHost.socketId;
-  // }, [roomDetail]);
-
-  // console.log('hostSocketId', hostSocketId);
-
   if (!selected || !user) return null;
-
   return (
-    // <div className="flex flex-col gap-4 p-4 flex-1 overflow-hidden">
     <div className="flex flex-col gap-4 px-4 pt-4 flex-1 overflow-auto">
       {joinError && (
         <div className="bg-destructive/15 text-destructive p-3 rounded-md relative">
@@ -142,7 +137,7 @@ export const Component = () => {
       {/* 房間資訊 */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold">Subject: {selected.namespace.name.toUpperCase()}</h1>
+          <h1 className="text-2xl font-bold">主題： {selected.namespace.name.toUpperCase()}</h1>
           <section className="flex items-center gap-2 divide-x divide-muted-foreground [&>p]:pl-2">
             <p className="text-sm text-muted-foreground">Room: {selected.room.roomTitle}</p>
             {/*  host name */}
@@ -173,7 +168,13 @@ export const Component = () => {
 
       {/* 視訊與聊天室   */}
       <main className="flex flex-col md:flex-row gap-4 transition-all flex-1 md:overflow-hidden">
-        {roomDetail.host && <VideoStream hostId={roomDetail.host.id} />}
+        {!roomDetail.isHostInRoom && (
+          <div className="flex-1 h-[20rem] md:h-auto flex flex-col items-center justify-center gap-4 bg-muted">
+            <ScreenShareOffIcon className="w-16 h-16 mx-auto" />
+            <p className="text-sm text-center font-bold text-muted-foreground">Oops! 主持人離開房間了</p>
+          </div>
+        )}
+        {roomDetail.isHostInRoom && roomDetail.host && <VideoStream hostId={roomDetail.host.id} />}
         <div className="flex-1 h-[20rem] md:h-auto flex flex-col gap-4">
           <MessageDialog messages={roomDetail.history} />
           <MessageInput onMessageSend={onMessageSend} disabled={!user} />

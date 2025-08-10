@@ -1,3 +1,4 @@
+import { stringToColor } from '@/lib/utils';
 import { ChatHistoryItem } from '../app-sidebar/types';
 import { useEffect, useRef } from 'react';
 
@@ -16,7 +17,7 @@ const MessageDialog = (props: { messages: ChatHistoryItem[] }) => {
     return props.messages.map((message: ChatHistoryItem) => {
       return (
         <div className="flex items-center gap-2 my-2 shadow-sm" key={message.date}>
-          <div className="h-8 aspect-square flex items-center justify-center rounded-full bg-primary text-white">
+          <div className="h-8 aspect-square flex items-center justify-center rounded-full text-white" style={{backgroundColor: stringToColor(message.userName)}}>
             {message.avatar ? <img src={message.avatar} className=" w-full h-full object-cover rounded-full " /> : message.userName.charAt(0).toLocaleUpperCase()}
           </div>
           <div className="flex flex-col gap-2 ">

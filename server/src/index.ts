@@ -5,11 +5,13 @@ import { Message, User } from './classes/Room';
 import Room from './classes/Room';
 import cors from 'cors';
 import { config } from 'dotenv';
-import { toNodeHandler } from 'better-auth/node';
-import { auth } from './auth';
 
 // 載入環境變數
 config();
+import { toNodeHandler } from 'better-auth/node';
+import { auth } from './auth';
+
+
 const app = express();
 const PORT = 3001;
 
@@ -36,11 +38,13 @@ app.use(
   }),
 );
 
-// 在 Better Auth handler 之後設定 JSON 解析中間件
-app.use(express.json());
-
 // 設定 better-auth 路由 - 使用官方的 toNodeHandler
 app.all('/api/auth/*', toNodeHandler(auth));
+
+// Mount express json middleware after Better Auth handler
+// or only apply it to routes that don't interact with Better Auth
+app.use(express.json());
+
 
 
 // 創建 Socket.IO 伺服器，允許 CORS
@@ -85,7 +89,6 @@ namespaces.forEach((namespace) => {
   const nsp = io.of(namespace.endpoint);
 
   nsp.on('connection', (nsSocket) => {
-    console.log(`User connected to namespace: ${namespace.endpoint}`);
 
     // ====== 接收用戶加入房間的請求 ======
     nsSocket.on('joinRoom', async ({ roomTitle, namespaceId, user }, ackCallback) => {
@@ -136,7 +139,8 @@ namespaces.forEach((namespace) => {
 
         // 向房間內所有使用者廣播使用者列表更新
         const roomUsers = currentRoom.getUsers();
-        nsp.in(roomTitle).emit('roomUsersUpdate', roomUsers);
+        const isHostInRoom = roomUsers.some((u) => u.id === currentRoom.host.id);
+        nsp.in(roomTitle).emit('roomUsersUpdate', {roomUsers, isHostInRoom});
 
         ackCallback({
           success: true,
@@ -144,6 +148,7 @@ namespaces.forEach((namespace) => {
           thisRoomHistory: currentRoom.history,
           users: roomUsers,
           host: currentRoom.host,
+          isHostInRoom: roomUsers.some((u) => u.id === currentRoom.host.id),
         });
 
         console.log(`User ${user.name} joined room ${roomTitle} in namespace ${currentNamespace.name}`);
@@ -219,7 +224,8 @@ namespaces.forEach((namespace) => {
             room.removeUserBySocketId(nsSocket.id);
             // 向房間內剩餘使用者廣播使用者列表更新
             const remainingUsers = room.getUsers();
-            nsp.in(leftRoomName).emit('roomUsersUpdate', remainingUsers);
+            const isHostInRoom = remainingUsers.some((u) => u.id === room.host.id);
+            nsp.in(leftRoomName).emit('roomUsersUpdate', { roomUsers: remainingUsers, isHostInRoom });
             console.log(`User disconnected from room ${leftRoomName}, remaining users: ${remainingUsers.length}`);
           }
         });
