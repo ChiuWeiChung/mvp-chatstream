@@ -9,7 +9,7 @@ import { UserIcon } from 'lucide-react';
 export const Home = () => {
   const { user, setUser } = useUserStore();
 
-  const handleUserNameSubmit = async (userName: string) => {
+  const handleUserNameSubmit = (userName: string) => {
     const newUser: User = { id: userName, name: userName };
     setUser(newUser); // 設定當前使用者資料
   };

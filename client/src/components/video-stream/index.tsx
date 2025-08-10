@@ -1,4 +1,3 @@
-// LivePlayer.jsx
 import { useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import { MediaController, MediaControlBar, MediaPlayButton, MediaMuteButton, MediaTimeRange, MediaTimeDisplay, MediaFullscreenButton } from 'media-chrome/react';
@@ -15,7 +14,6 @@ export default function LivePlayer({ className = '', hostId }: VideoStreamProps)
     const video = videoRef.current;
     if (!video) return;
 
-    console.log('hostId', hostId);
     let hls: Hls;
     // 使用當前頁面的 origin 來構建 HLS 串流 URL，支援手機連接
     const baseUrl = window.location.origin;
@@ -71,10 +69,6 @@ export default function LivePlayer({ className = '', hostId }: VideoStreamProps)
           <MediaFullscreenButton />
         </MediaControlBar>
       </MediaController>
-
-      {/* Tips:
-         1) 跨網域資源需正確 CORS header（m3u8/TS）。
-      */}
     </div>
   );
 }

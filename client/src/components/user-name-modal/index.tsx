@@ -6,7 +6,7 @@ import { UserIcon } from 'lucide-react';
 
 interface UserNameModalProps {
   open: boolean;
-  onSubmit: (userName: string) => Promise<void>;
+  onSubmit: (userName: string) => void;
   error?: string | null;
   onErrorClear?: () => void;
 }
@@ -17,17 +17,16 @@ export default function UserNameModal({ open, onSubmit, error, onErrorClear }: U
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!userName.trim()) return;
-    
-    // 清除之前的错误信息
+
     if (error && onErrorClear) {
       onErrorClear();
     }
-    
+
     setIsLoading(true);
     try {
-      await onSubmit(userName.trim());
+      onSubmit(userName.trim());
     } catch (error) {
       console.error('Error submitting user name:', error);
     } finally {
@@ -37,8 +36,7 @@ export default function UserNameModal({ open, onSubmit, error, onErrorClear }: U
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserName(e.target.value);
-    
-    // 当用户重新输入时清除错误信息
+
     if (error && onErrorClear) {
       onErrorClear();
     }
@@ -46,12 +44,7 @@ export default function UserNameModal({ open, onSubmit, error, onErrorClear }: U
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent 
-        className="sm:max-w-[425px]" 
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-        showCloseButton={false}
-      >
+      <DialogContent className="sm:max-w-[425px]" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()} showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserIcon className="h-5 w-5" />
@@ -63,30 +56,11 @@ export default function UserNameModal({ open, onSubmit, error, onErrorClear }: U
             <label htmlFor="userName" className="text-sm font-medium">
               請輸入您的名稱
             </label>
-            <Input
-              id="userName"
-              type="text"
-              placeholder="輸入您的名稱..."
-              value={userName}
-              onChange={handleInputChange}
-              disabled={isLoading}
-              autoFocus
-              className={error ? 'border-destructive' : ''}
-            />
-            {error && (
-              <p className="text-xs text-destructive">
-                {error}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              名稱將作為您在聊天室中的身份識別
-            </p>
+            <Input id="userName" type="text" placeholder="輸入您的名稱..." value={userName} onChange={handleInputChange} disabled={isLoading} autoFocus className={error ? 'border-destructive' : ''} />
+            {error && <p className="text-xs text-destructive">{error}</p>}
+            <p className="text-xs text-muted-foreground">作為您在聊天室中的名稱</p>
           </div>
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={!userName.trim() || isLoading}
-          >
+          <Button type="submit" className="w-full" disabled={!userName.trim() || isLoading}>
             {isLoading ? '處理中...' : '確認'}
           </Button>
         </form>

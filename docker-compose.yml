@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       context: ./server
     ports:
-      - "3001:3001"
+      - "3001:3001" # Server (Node.js)
     volumes:
       - /app/node_modules
       - ./server:/app
@@ -17,11 +17,10 @@ services:
     build:
       dockerfile: Dockerfile
       context: ./client
-      args:
-        - VITE_API_URL=http://localhost:3001
+      # 不設定 VITE_API_URL，讓客戶端自動使用 window.location.origin
     ports:
-      - "8080:8080"    # Web 界面
-      - "1935:1935"    # RTMP 串流 (供未來 HLS 使用)
+      - "8080:8080"    # Client (React App)
+      - "1935:1935"    # RTMP Server (Nginx)
     depends_on:
       - server
     restart: unless-stopped
