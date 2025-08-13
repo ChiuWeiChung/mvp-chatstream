@@ -7,7 +7,6 @@ import { NsData } from '../app-sidebar/types';
 import { NavLink } from 'react-router';
 import { AddRoomDialog } from '../add-room-dialog';
 import io from 'socket.io-client';
-// import { socketUrl } from '@/utilities/socketConnection';
 
 import { User } from '@/lib/auth';
 import { socketUrl } from '@/lib/socket';

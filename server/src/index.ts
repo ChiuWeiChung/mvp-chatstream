@@ -5,35 +5,27 @@ import { Message, User } from './classes/Room';
 import Room from './classes/Room';
 import cors from 'cors';
 import { config } from 'dotenv';
+import { z } from 'zod';
 
 // 載入環境變數
 config();
+import { auth } from './lib/auth';
 import { toNodeHandler } from 'better-auth/node';
-import { auth } from './auth';
-
+import { createStreamKey, verifyStreamKey } from './lib/crypto';
+import { getCurrentPosition } from './lib/utils';
 
 const app = express();
 const PORT = 3001;
-
 
 // 啟動 Express 伺服器
 const expressServer = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-// 調試：檢查環境變數是否正確載入（可選）
-if (process.env.NODE_ENV !== 'production') {
-  console.log('Environment variables loaded:');
-  console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Not set');
-  console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Not set');
-  console.log('BETTER_AUTH_SECRET:', process.env.BETTER_AUTH_SECRET ? 'Set' : 'Not set');
-}
-
-
 // 設定 CORS 中間件
 app.use(
   cors({
-    origin: ['http://localhost:3000'],
+    origin: [process.env.CLIENT_AUTH_URL || 'http://localhost:3000'],
     credentials: true,
   }),
 );
@@ -41,25 +33,52 @@ app.use(
 // 設定 better-auth 路由 - 使用官方的 toNodeHandler
 app.all('/api/auth/*', toNodeHandler(auth));
 
+// 接收產生 streamKey 的請求，並回傳給 user 使用 (client to server，無關 nginx)
+app.get('/api/streamKey', (req, res) => {
+  const { userId } = req.query;
+  const streamKey = createStreamKey(userId as string);
+  res.json({ streamKey });
+});
+
+// 接收驗證 streamKey 的請求，並回傳給 user 使用 (client to server，無關 nginx)
+// TODO 測試用，後續要移除
+app.get('/api/verifyStreamKey', (req, res) => {
+  const { streamKey } = req.query;
+  const result = verifyStreamKey(streamKey as string);
+  res.json({ result });
+});
+
+// 接收 RTMP Stream 推流請求(from Nginx-RTMP Server)，並驗證 streamKey (server to server，無關 client)
+app.get('/rtmp/on-publish', (req, res) => {
+  const source = req.query;
+  const Query = z.object({
+    app: z.string().optional(),
+    name: z.string(), // Stream Key
+    addr: z.string().optional(),
+    clientid: z.string().optional(),
+  });
+
+  const parsed = Query.safeParse(source);
+  if (!parsed.success) return res.status(400).send('bad query');
+
+  const { name: streamKey } = parsed.data;
+  const result = verifyStreamKey(streamKey, { ttlSec: 30 * 60 });
+
+  if (!result.ok) return res.status(403).send(`deny: ${result.reason}`);
+  return res.status(204).end();
+});
+
 // Mount express json middleware after Better Auth handler
 // or only apply it to routes that don't interact with Better Auth
 app.use(express.json());
 
-
-
 // 創建 Socket.IO 伺服器，允許 CORS
 const io = new Server(expressServer, {
   cors: {
-    // origin: ['http://localhost:3000', 'http://localhost:8080'], // 暫時允許所有來源
-    origin: '*', // for 測試需求，允許所有來源
+    origin: '*', //Note: for 測試需求，允許所有來源
     methods: ['GET', 'POST'],
     credentials: true,
   },
-});
-
-// 設置 API endpoint (only for test)
-app.get('/hello', (_: Request, res: Response) => {
-  return res.json({ message: 'hello' });
 });
 
 // Socket.io 連線事件
@@ -89,19 +108,14 @@ namespaces.forEach((namespace) => {
   const nsp = io.of(namespace.endpoint);
 
   nsp.on('connection', (nsSocket) => {
-
     // ====== 接收用戶加入房間的請求 ======
     nsSocket.on('joinRoom', async ({ roomTitle, namespaceId, user }, ackCallback) => {
       console.log(`🔍 joinRoom request: user="${user.name}", socketId="${nsSocket.id}", room="${roomTitle}"`);
       try {
-        const currentNamespace = namespaces[namespaceId];
-        const currentRoom = currentNamespace.rooms.find((room) => room.roomTitle === roomTitle);
-        
+        const { currentNamespace, currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
+
         if (!currentRoom) {
-          ackCallback({ 
-            success: false, 
-            error: 'Room not found' 
-          });
+          ackCallback({ success: false, error: 'Room not found' });
           return;
         }
 
@@ -109,12 +123,12 @@ namespaces.forEach((namespace) => {
         const userWithSocketId: User = {
           id: user.id,
           name: user.name,
-          socketId: nsSocket.id
+          socketId: nsSocket.id,
         };
 
         // 先從所有房間移除該 socket 的使用者（如果存在）
-        namespaces.forEach(namespace => {
-          namespace.rooms.forEach(room => {
+        namespaces.forEach((namespace) => {
+          namespace.rooms.forEach((room) => {
             room.removeUserBySocketId(nsSocket.id);
           });
         });
@@ -122,14 +136,14 @@ namespaces.forEach((namespace) => {
         // 加入使用者到目標房間
         const canJoin = currentRoom.addUser(userWithSocketId);
         if (!canJoin) {
-          ackCallback({ 
-            success: false, 
-            error: 'Failed to join room: user already exists' 
+          ackCallback({
+            success: false,
+            error: 'Failed to join room: user already exists',
           });
           return;
         }
 
-        // NOTE: 移除該 socket 先前加入的所有房間（第一個房間是 socket 自己的 ID，不移除）
+        // ***** NOTE: 移除該 socket 先前加入的所有房間（第一個房間是 socket 自己的 ID，不移除）*****
         [...nsSocket.rooms].forEach((room, index) => {
           if (index !== 0) nsSocket.leave(room);
         });
@@ -140,50 +154,48 @@ namespaces.forEach((namespace) => {
         // 向房間內所有使用者廣播使用者列表更新
         const roomUsers = currentRoom.getUsers();
         const isHostInRoom = roomUsers.some((u) => u.id === currentRoom.host.id);
-        nsp.in(roomTitle).emit('roomUsersUpdate', {roomUsers, isHostInRoom});
 
-        ackCallback({
+        const payload = {
           success: true,
-          numUsers: roomUsers.length,
-          thisRoomHistory: currentRoom.history,
           users: roomUsers,
+          numUsers: roomUsers.length,
+          history: currentRoom.history,
           host: currentRoom.host,
-          isHostInRoom: roomUsers.some((u) => u.id === currentRoom.host.id),
-        });
+          isHostInRoom,
+          streamCode: currentRoom.code,
+        };
+        
+        nsp.in(roomTitle).emit('roomUsersUpdate', { roomUsers, isHostInRoom });
+        ackCallback(payload);
 
         console.log(`User ${user.name} joined room ${roomTitle} in namespace ${currentNamespace.name}`);
       } catch (error) {
         console.error('Error joining room:', error);
-        ackCallback({ 
-          success: false, 
-          error: 'Failed to join room' 
-        });
+        ackCallback({ success: false, error: 'Failed to join room' });
       }
     });
 
     // ====== 接收新訊息並廣播到對應房間 ======
     nsSocket.on('newMessageToRoom', (messageObj: Message) => {
-      const currentRoomName = [...nsSocket.rooms][1]; // 取得用戶所在的房間名稱
-      nsp.in(currentRoomName).emit('messageToRoom', messageObj);
-
-      // 儲存訊息至房間的歷史記錄
-      const currentNamespace = namespaces[messageObj.selectedNsId];
-      const currentRoom = currentNamespace.rooms.find((room) => room.roomTitle === currentRoomName);
-      currentRoom?.addMessage(messageObj);
+      const { currentRoom } = getCurrentPosition({ namespaceId: messageObj.selectedNsId, roomTitle: messageObj.selectedRoomTitle });
+      if (currentRoom) {
+        nsp.in(currentRoom.roomTitle).emit('messageToRoom', messageObj);
+        currentRoom.addMessage(messageObj);
+      }
     });
 
     // ====== 處理新增房間的請求 ======
     nsSocket.on('createRoom', ({ roomTitle, namespaceId, host }, ackCallback) => {
       try {
-        const currentNamespace = namespaces[namespaceId];
+        // const currentNamespace = namespaces[namespaceId];
+        const { currentNamespace, currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
         if (!currentNamespace) {
           ackCallback({ success: false, error: 'Namespace not found' });
           return;
         }
 
         // 檢查房間名稱是否已存在
-        const existingRoom = currentNamespace.rooms.find(room => room.roomTitle === roomTitle);
-        if (existingRoom) {
+        if (currentRoom) {
           ackCallback({ success: false, error: 'Room already exists' });
           return;
         }
@@ -191,7 +203,7 @@ namespaces.forEach((namespace) => {
         // 創建新房間 (roomId 為當前房間數量)
         const newRoomId = currentNamespace.rooms.length;
         const newRoom = new Room(newRoomId, roomTitle, namespaceId, host);
-        
+
         // 將新房間加入到 namespace
         currentNamespace.addRoom(newRoom);
 
@@ -202,8 +214,8 @@ namespaces.forEach((namespace) => {
             roomId: newRoom.roomId,
             roomTitle: newRoom.roomTitle,
             namespaceId: newRoom.namespaceId,
-            history: newRoom.history
-          }
+            history: newRoom.history,
+          },
         });
 
         ackCallback({ success: true, room: newRoom });
@@ -214,18 +226,39 @@ namespaces.forEach((namespace) => {
       }
     });
 
-    // 監聽用戶離開房間時的處理
+    // ====== 接收 host 發出的開始直播請求，並回傳 code ======
+    nsSocket.on('startStreaming', ({ namespaceId, code, roomTitle }, ackCallback) => {
+      const { currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
+      if (currentRoom) {
+        currentRoom.updateStreamKey(code);
+        nsp.in(currentRoom.roomTitle).emit('streamCodeUpdate', code);
+        ackCallback({ success: true });
+      } else ackCallback({ success: false, error: 'Room not found' });
+    });
+
+    // ====== 接收 host 發出的停止直播請求 ======
+    nsSocket.on('stopStreaming', ({ namespaceId, roomTitle }, ackCallback) => {
+      const { currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
+      if (currentRoom) {
+        currentRoom.updateStreamKey(undefined);
+        nsp.in(currentRoom.roomTitle).emit('streamCodeUpdate', undefined);
+        ackCallback({ success: true });
+      } else ackCallback({ success: false, error: 'Room not found' });
+    });
+
+    // ====== 處理用戶離開房間時 ======
     nsSocket.on('disconnecting', async () => {
       const leftRoomName = [...nsSocket.rooms][1];
       if (leftRoomName && leftRoomName !== nsSocket.id) {
         // 從房間中移除使用者
-        namespace.rooms.forEach(room => {
+        namespace.rooms.forEach((room) => {
           if (room.roomTitle === leftRoomName) {
             room.removeUserBySocketId(nsSocket.id);
             // 向房間內剩餘使用者廣播使用者列表更新
             const remainingUsers = room.getUsers();
             const isHostInRoom = remainingUsers.some((u) => u.id === room.host.id);
             nsp.in(leftRoomName).emit('roomUsersUpdate', { roomUsers: remainingUsers, isHostInRoom });
+            if (!isHostInRoom) nsp.in(leftRoomName).emit('streamCodeUpdate', undefined);
             console.log(`User disconnected from room ${leftRoomName}, remaining users: ${remainingUsers.length}`);
           }
         });

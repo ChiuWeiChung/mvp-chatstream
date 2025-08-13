@@ -1,7 +1,6 @@
 // import { Calendar, Home, Inbox, Search, Settings } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu } from '@/components/ui/sidebar';
 import { useEffect, useRef } from 'react';
-// import socket, { socketUrl } from '@/utilities/socketConnection';
 import { NsData } from './types';
 import { NamespaceList } from '../namespace-list';
 import { MessageSquareDot } from 'lucide-react';
@@ -66,7 +65,7 @@ export function AppSidebar() {
         </div>
         <Link to="/">
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <p className="truncate font-semibold text-primary text-xl">ChatStream MVP</p>
+            <p className="truncate font-semibold text-primary text-xl">SockStream</p>
           </div>
         </Link>
       </SidebarHeader>

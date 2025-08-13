@@ -2,7 +2,8 @@ import io, { Socket } from 'socket.io-client';
 
 // 根據環境設定 Socket 連接位址
 // 如果有設定環境變數則使用，否則使用當前頁面的協議和主機（透過 nginx 代理）
-export const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
+// export const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
+export const socketUrl = import.meta.env.VITE_API_URL 
 
 // 創建 Socket 連接管理器
 class SocketManager {

@@ -9,15 +9,12 @@ services:
     volumes:
       - /app/node_modules
       - ./server:/app
-    environment:
-      - NODE_ENV=development
     restart: unless-stopped
 
   client:
     build:
       dockerfile: Dockerfile
       context: ./client
-      # 不設定 VITE_API_URL，讓客戶端自動使用 window.location.origin
     ports:
       - "8080:8080"    # Client (React App)
       - "1935:1935"    # RTMP Server (Nginx)

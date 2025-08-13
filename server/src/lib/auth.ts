@@ -17,13 +17,13 @@ export const auth = betterAuth({
   },
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3001',
-  trustedOrigins: ['http://localhost:3000'],
+  trustedOrigins: [process.env.CLIENT_AUTH_URL || 'http://localhost:3000',],
   callbacks: {
     signIn: {
       after: async (user: any, request: any) => {
         // 對於 OAuth 登入，重定向到前端
         return {
-          redirect: 'http://localhost:3000',
+          redirect: process.env.CLIENT_AUTH_URL || 'http://localhost:3000',
         };
       },
     },

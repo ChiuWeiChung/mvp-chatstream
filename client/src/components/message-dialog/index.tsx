@@ -18,7 +18,7 @@ const MessageDialog = (props: { messages: ChatHistoryItem[] }) => {
       return (
         <div className="flex items-center gap-2 my-2 shadow-sm" key={message.date}>
           <div className="h-8 aspect-square flex items-center justify-center rounded-full text-white" style={{backgroundColor: stringToColor(message.userName)}}>
-            {message.avatar ? <img src={message.avatar} className=" w-full h-full object-cover rounded-full " /> : message.userName.charAt(0).toLocaleUpperCase()}
+            {message.image ? <img src={message.image} className=" w-full h-full object-cover rounded-full " /> : message.userName.charAt(0).toLocaleUpperCase()}
           </div>
           <div className="flex flex-col gap-2 ">
             <div className="flex flex-col gap-2">

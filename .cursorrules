@@ -1,4 +1,4 @@
-# Cursor Rules for MVP ChatStream Project
+# Cursor Rules for SockStream Project
 
 ## Project Overview
 This is a real-time chat application MVP built with React + TypeScript (client) and Node.js + Express + Socket.IO (server).

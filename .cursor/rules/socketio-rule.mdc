@@ -1,5 +1,5 @@
 ---
-description: Socket.IO development rules and best practices for MVP ChatStream project
+description: Socket.IO development rules and best practices for SockStream project
 globs: 
   - "**/*.ts"
   - "**/*.tsx"
@@ -62,8 +62,8 @@ alwaysApply: true
 
 ### Project Structure
 ```
-mvp-chatstream/
-├── client/src/utilities/socketConnection.ts  # Socket.IO client setup
+SockStream/
+├── client/src/lib/socket.ts  # Socket.IO client setup
 ├── client/src/hooks/use-namespace-store.ts   # Zustand state management
 ├── server/src/classes/Namespace.ts           # Namespace management
 ├── server/src/classes/Room.ts                # Room and message types

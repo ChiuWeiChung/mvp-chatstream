@@ -76,7 +76,7 @@ export const Auth = () => {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900">
-            {isSignUp ? '註冊' : '登入'}到 ChatStream
+            {isSignUp ? '註冊' : '登入'}到 SockStream
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             {isSignUp ? '創建新帳戶開始聊天' : '登入您的帳戶繼續聊天'}

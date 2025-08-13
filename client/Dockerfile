@@ -12,10 +12,6 @@ RUN npm install
 # 複製所有檔案
 COPY . .
 
-# 設置建構時環境變數
-ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
-
 # build
 RUN npm run build
 

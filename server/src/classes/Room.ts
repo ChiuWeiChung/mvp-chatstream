@@ -10,6 +10,7 @@ export type Message ={
   date: number;
   avatar: string;
   selectedNsId: number;
+  selectedRoomTitle: string;
 }
 
 class Room {
@@ -18,6 +19,7 @@ class Room {
   namespaceId: number;
   host: User;
   history: Message[];
+  code?: string;
   users: User[]; // 紀錄目前房間內的使用者
 
   constructor(roomId: number, roomTitle: string, namespaceId: number, host: User) {
@@ -74,6 +76,10 @@ class Room {
   // 取得房間內使用者列表
   getUsers(): User[] {
     return [...this.users]; // 回傳副本避免外部修改
+  }
+
+  updateStreamKey(code?: string): void {
+    this.code = code;
   }
 }
 

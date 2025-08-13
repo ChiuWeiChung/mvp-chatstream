@@ -59,10 +59,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signInWithGoogle: async () => {
     try {
-      // 使用 Better Auth 的正確 API 方法
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "http://localhost:3000",
+        callbackURL: window.location.origin,
       });
     } catch (error) {
       console.error('Failed to sign in with Google:', error);

@@ -2,9 +2,10 @@
 export type ChatHistoryItem = {
   newMessage: string;
   date: number; // timestamp
-  avatar?: string;
+  image?: string;
   userName: string;
   selectedNsId: number;
+  selectedRoomTitle: string; // TODO
 };
 
 // 定義房間的型別
