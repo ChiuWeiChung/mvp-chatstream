@@ -3,13 +3,13 @@
 import { ChevronRight } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
-import { NsData } from '../app-sidebar/types';
 import { NavLink } from 'react-router';
-import { AddRoomDialog } from '../add-room-dialog';
 import io from 'socket.io-client';
 
 import { User } from '@/lib/auth';
 import { socketUrl } from '@/lib/socket';
+import { NsData } from '../types';
+import { AddRoomDialog } from '@/components/sidebar/add-room-dialog';
 
 export function NamespaceList({ namespaces }: { namespaces: NsData }) {
   const handleCreateRoom = async (namespaceId: number, roomTitle: string, host: User) => {
@@ -20,7 +20,7 @@ export function NamespaceList({ namespaces }: { namespaces: NsData }) {
     const { success, error, room } = (await namespaceSocket.emitWithAck('createRoom', { roomTitle, namespaceId, host })) as { success: boolean; error?: string; room: { roomId: string } };
     // 建立房間的動作只需要一次，之後的即時更新會透過其他連線（或其他事件）處理，所以斷開
     namespaceSocket.disconnect();
-    if (success) return { success: true, room: room };
+    if (success) return { success: true, room };
     else return { success: false, error: error || 'Failed to create room' };
   };
 

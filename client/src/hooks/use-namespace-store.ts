@@ -1,4 +1,4 @@
-import { Namespace, Room } from '@/components/app-sidebar/types';
+import { Namespace, Room } from '@/components/sidebar/types';
 import { create } from 'zustand';
 
 interface NamespaceState {
@@ -10,7 +10,7 @@ interface NamespaceState {
   setNamespaces: (namespaces: Namespace[]) => void; // 設置所有 namespace
   setSelected: (state: { room: Room; namespace: Namespace }) => void;
   resetNamespace: () => void; // 重置所選的 namespace
-  addRoomToNamespace: (namespaceId: number, room: Room) => void; // 新增房間到指定 namespace
+  addRoomToNamespace: (props: { namespaceId: number; newRoom: Room }) => void; // 新增房間到指定 namespace
 }
 
 // 創建 store
@@ -25,7 +25,7 @@ export const useNamespaceStore = create<NamespaceState>((set) => ({
   // 重置目前選擇
   resetNamespace: () => set({ selected: undefined }),
   // 新增房間到指定的 namespace
-  addRoomToNamespace: (namespaceId, newRoom) => set((state) => ({
+  addRoomToNamespace: ({ namespaceId, newRoom }) => set((state) => ({
     namespaces: state.namespaces.map((namespace) => 
       namespace.id === namespaceId 
         ? { ...namespace, rooms: [...(namespace.rooms || []), newRoom] }

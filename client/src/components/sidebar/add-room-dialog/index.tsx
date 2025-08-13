@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Namespace } from '@/components/app-sidebar/types';
+import { Namespace } from '@/components/sidebar/types';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '@/hooks/use-auth-store';
 import { User } from '@/lib/auth';
@@ -38,7 +38,6 @@ export function AddRoomDialog({ namespace, onCreateRoom }: AddRoomDialogProps) {
 
     try {
       const result = await onCreateRoom(namespace.id, roomTitle.trim(), user);
-
       if (result.success && result.room) {
         setRoomTitle('');
         setOpen(false);

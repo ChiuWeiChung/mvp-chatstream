@@ -1,11 +1,11 @@
 // 定義 history 陣列中的每一個訊息物件
-export type ChatHistoryItem = {
+export type Message = {
   newMessage: string;
   date: number; // timestamp
   image?: string;
   userName: string;
-  selectedNsId: number;
-  selectedRoomTitle: string; // TODO
+  namespaceId: number;
+  roomTitle: string;
 };
 
 // 定義房間的型別
@@ -14,7 +14,7 @@ export type Room = {
   roomTitle: string;
   namespaceId: number;
   privateRoom: boolean;
-  history: ChatHistoryItem[];
+  history: Message[];
 };
 
 // 定義 namespace 的型別

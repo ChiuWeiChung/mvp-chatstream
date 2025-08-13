@@ -8,9 +8,9 @@ export type Message ={
   newMessage: string;
   userName: string;
   date: number;
-  avatar: string;
-  selectedNsId: number;
-  selectedRoomTitle: string;
+  image?: string;
+  namespaceId: number;
+  roomTitle: string;
 }
 
 class Room {

@@ -1,8 +1,8 @@
 import { stringToColor } from '@/lib/utils';
-import { ChatHistoryItem } from '../app-sidebar/types';
+import { Message } from '../../sidebar/types';
 import { useEffect, useRef } from 'react';
 
-const MessageDialog = (props: { messages: ChatHistoryItem[] }) => {
+const MessageDialog = (props: { messages: Message[] }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // 有新訊息時，scroll 到最下方
@@ -14,7 +14,7 @@ const MessageDialog = (props: { messages: ChatHistoryItem[] }) => {
   }, [props.messages]);
 
   const renderMessages = () => {
-    return props.messages.map((message: ChatHistoryItem) => {
+    return props.messages.map((message: Message) => {
       return (
         <div className="flex items-center gap-2 my-2 shadow-sm" key={message.date}>
           <div className="h-8 aspect-square flex items-center justify-center rounded-full text-white" style={{backgroundColor: stringToColor(message.userName)}}>

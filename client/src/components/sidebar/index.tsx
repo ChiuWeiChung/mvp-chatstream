@@ -1,18 +1,14 @@
-// import { Calendar, Home, Inbox, Search, Settings } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu } from '@/components/ui/sidebar';
 import { useEffect, useRef } from 'react';
 import { NsData } from './types';
-import { NamespaceList } from '../namespace-list';
+import { NamespaceList } from './namespace-list';
 import { MessageSquareDot } from 'lucide-react';
 import { useNamespaceStore } from '@/hooks/use-namespace-store';
 import io, { Socket } from 'socket.io-client';
-import { Room } from './types';
 import { Link } from 'react-router';
 import { socketUrl,getSocket } from '@/lib/socket';
 
-// Menu items.
-
-export function AppSidebar() {
+export default function SockStreamSidebar() {
   const { resetNamespace, setNamespaces, namespaces, addRoomToNamespace } = useNamespaceStore();
   const namespaceConnectionsRef = useRef<Socket[]>([]);
 
@@ -24,39 +20,33 @@ export function AppSidebar() {
     });
 
     return () => {
-      // socket.disconnect();
       resetNamespace();
     };
   }, [resetNamespace, setNamespaces]);
 
   useEffect(() => {
-    // Function to setup namespace listeners
+    // 設定 namespace 的 listeners，處裡每個 namespace 的 roomCreated 事件
     const setupNamespaceListeners = () => {
-      // Clear existing connections
       namespaceConnectionsRef.current.forEach((conn) => conn.disconnect());
       namespaceConnectionsRef.current = [];
 
-      // Connect to each namespace to listen for room creation events
       namespaces.forEach((ns) => {
         if (ns.endpoint) {
           const nsSocket = io(`${socketUrl}${ns.endpoint}`);
-          nsSocket.on('roomCreated', ({ namespaceId, newRoom }: { namespaceId: number; newRoom: Room }) => {
-            addRoomToNamespace(namespaceId, newRoom);
-          });
+          nsSocket.on('roomCreated', addRoomToNamespace);
           namespaceConnectionsRef.current.push(nsSocket);
         }
       });
     };
 
     // Setup listeners when namespaces are loaded
-    if (namespaces.length > 0) {
-      setupNamespaceListeners();
-    }
+    if (namespaces.length > 0) setupNamespaceListeners();
 
     return () => {
       namespaceConnectionsRef.current.forEach((conn) => conn.disconnect());
     };
-  }, [namespaces, addRoomToNamespace]); // Re-run when namespaces change
+  }, [namespaces, addRoomToNamespace]);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="flex flex-row items-center">

@@ -40,14 +40,6 @@ app.get('/api/streamKey', (req, res) => {
   res.json({ streamKey });
 });
 
-// 接收驗證 streamKey 的請求，並回傳給 user 使用 (client to server，無關 nginx)
-// TODO 測試用，後續要移除
-app.get('/api/verifyStreamKey', (req, res) => {
-  const { streamKey } = req.query;
-  const result = verifyStreamKey(streamKey as string);
-  res.json({ result });
-});
-
 // 接收 RTMP Stream 推流請求(from Nginx-RTMP Server)，並驗證 streamKey (server to server，無關 client)
 app.get('/rtmp/on-publish', (req, res) => {
   const source = req.query;
@@ -177,7 +169,7 @@ namespaces.forEach((namespace) => {
 
     // ====== 接收新訊息並廣播到對應房間 ======
     nsSocket.on('newMessageToRoom', (messageObj: Message) => {
-      const { currentRoom } = getCurrentPosition({ namespaceId: messageObj.selectedNsId, roomTitle: messageObj.selectedRoomTitle });
+      const { currentRoom } = getCurrentPosition({ namespaceId: messageObj.namespaceId, roomTitle: messageObj.roomTitle });
       if (currentRoom) {
         nsp.in(currentRoom.roomTitle).emit('messageToRoom', messageObj);
         currentRoom.addMessage(messageObj);

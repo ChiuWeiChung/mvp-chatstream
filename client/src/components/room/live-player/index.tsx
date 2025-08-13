@@ -4,13 +4,75 @@ import { MediaController, MediaControlBar, MediaPlayButton, MediaMuteButton, Med
 import { CopyIcon, MonitorStopIcon, MonitorUpIcon, ScreenShareOffIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { VideoStreamProps } from './types';
+import { Socket } from 'socket.io-client';
+import { RoomDetail } from '@/components/room/types';
 
-export default function LivePlayer(props: VideoStreamProps) {
+interface LivePlayerProps {
+  roomDetail: RoomDetail;
+  userIsHost: boolean;
+  nsSocket?: Socket;
+  namespaceId: number;
+  onStreamCodeUpdate: (code?: string) => void;
+  roomTitle: string;
+}
+
+export default function LivePlayer(props: LivePlayerProps) {
   const { roomDetail, userIsHost, nsSocket, namespaceId, onStreamCodeUpdate, roomTitle } = props;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | undefined>(undefined);
+
+  // 直播設定
+  const handleStreamingSetup = async () => {
+    if (roomDetail.host) {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const res = await fetch(`${apiUrl}/api/streamKey?userId=${roomDetail.host.id}`);
+      const { streamKey } = (await res.json()) as { streamKey: { key: string; expiresAt: number } };
+      setGeneratedCode(streamKey.key);
+      setIsDialogOpen(true);
+    }
+  };
+
+  // 開始直播
+  const handleStartStreaming = async () => {
+    if (nsSocket && generatedCode) {
+      const ackResponse = await nsSocket.emitWithAck('startStreaming', { code: generatedCode, namespaceId, roomTitle });
+      if (ackResponse.success) setIsDialogOpen(false);
+      else console.error('Start streaming error:', ackResponse.error);
+    }
+  };
+
+  // 停止直播
+  const handleStopStreaming = async () => {
+    if (nsSocket) {
+      const ackResponse = await nsSocket.emitWithAck('stopStreaming', { namespaceId, roomTitle });
+      if (!ackResponse.success) console.error('Stop streaming error:', ackResponse.error);
+    }
+  };
+
+  const renderHeader = () => {
+    if (userIsHost) {
+      return (
+        <div className="flex items-center justify-center gap-4">
+          {roomDetail.streamCode ? (
+            <Button variant="destructive" onClick={handleStopStreaming}>
+              <MonitorStopIcon /> 停止直播
+            </Button>
+          ) : (
+            <Button onClick={handleStreamingSetup}>
+              <MonitorUpIcon /> 準備直播
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    if (!roomDetail.streamCode) {
+      return <p className="text-sm text-center font-bold text-muted-foreground">Oops! 主持人尚未開始直播</p>;
+    }
+
+    return null;
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -18,8 +80,7 @@ export default function LivePlayer(props: VideoStreamProps) {
 
     let hls: Hls | null = null;
     // 使用當前頁面的 origin 來構建 HLS 串流 URL，支援手機連接
-    const baseUrl = window.location.origin;
-    const src = `${baseUrl}/hls/${roomDetail.streamCode}.m3u8`;
+    const src = `${window.location.origin}/hls/${roomDetail.streamCode}.m3u8`;
 
     if (Hls.isSupported()) {
       const onParsed = () => {
@@ -38,45 +99,13 @@ export default function LivePlayer(props: VideoStreamProps) {
         hls?.off(Hls.Events.MANIFEST_PARSED, onParsed);
         hls?.destroy();
       };
-    }
-
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = src;
-      const onLoaded = () => video.play?.().catch(() => {});
-      video.addEventListener('loadedmetadata', onLoaded);
-      return () => video.removeEventListener('loadedmetadata', onLoaded);
-    }
+    } else console.error('Hls is not supported');
   }, [roomDetail.streamCode, roomDetail.host]);
 
-  const handleStreamingSetup = async () => {
-    if (roomDetail.host) {
-      const apiUrl = import.meta.env.VITE_API_URL;
-      const res = await fetch(`${apiUrl}/api/streamKey?userId=${roomDetail.host.id}`);
-      const { streamKey } = (await res.json()) as { streamKey: { key: string; expiresAt: number } };
-      setGeneratedCode(streamKey.key);
-      setIsDialogOpen(true);
-    }
-  };
-
-  const handleStartStreaming = async () => {
-    if (nsSocket && generatedCode) {
-      const ackResponse = await nsSocket.emitWithAck('startStreaming', { code: generatedCode, namespaceId, roomTitle });
-      if (ackResponse.success) setIsDialogOpen(false);
-      else console.error('Start streaming error:', ackResponse.error);
-    }
-  };
-
-  const handleStopStreaming = async () => {
-    if (nsSocket) {
-      const ackResponse = await nsSocket.emitWithAck('stopStreaming', { namespaceId, roomTitle });
-      if (!ackResponse.success) console.error('Stop streaming error:', ackResponse.error);
-    }
-  };
-
+  // 如果 host 開始直播，則更新 roomDetail.streamCode
   useEffect(() => {
     if (nsSocket) {
       nsSocket.on('streamCodeUpdate', (code?: string) => {
-        console.log('streamCodeUpdate is triggered', code);
         onStreamCodeUpdate(code);
       });
     }
@@ -93,26 +122,12 @@ export default function LivePlayer(props: VideoStreamProps) {
 
   return (
     <div className="flex flex-col gap-4 items-center bg-muted/50 p-4 min-w-[300px] w-full max-w-[768px] mx-auto text-center">
-      {userIsHost && (
-        <div className="flex items-center justify-center gap-4">
-          {roomDetail.streamCode ? (
-            <Button variant="destructive" onClick={handleStopStreaming}>
-              <MonitorStopIcon /> 停止直播
-            </Button>
-          ) : (
-            <Button onClick={handleStreamingSetup}>
-              <MonitorUpIcon />
-              準備直播
-            </Button>
-          )}
-        </div>
-      )}
+      {renderHeader()}
 
       <MediaController className="block w-full rounded-xl overflow-hidden shadow aspect-video mx-auto pb-4">
-        {/* 將 <video> 指定為受控媒體：slot="media" */}
         <video
           ref={videoRef}
-          slot="media"
+          slot="media" // 將 <video> 指定為受控媒體：slot="media"
           autoPlay
           muted // 自動播放需 muted 才會成功
           playsInline

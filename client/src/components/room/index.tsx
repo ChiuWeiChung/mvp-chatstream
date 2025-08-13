@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import MessageInput from '@/components/message-input';
-import MessageDialog from '@/components/message-dialog';
 import { Params, useParams } from 'react-router';
 import { io, Socket } from 'socket.io-client';
 import { useNamespaceStore } from '@/hooks/use-namespace-store';
 import { useNavigate } from 'react-router';
-import { ChatHistoryItem } from '../app-sidebar/types';
+import { Message } from '@/components/sidebar/types';
 import { UserIcon } from 'lucide-react';
-import VideoStream from '../video-stream';
 import { useAuthStore } from '@/hooks/use-auth-store';
 import { User } from '@/lib/auth';
 import { socketUrl } from '@/lib/socket';
-import Footer from '../footer';
+import Footer from '@/components/footer';
+import MessageInput from './chat/message-input';
+import LivePlayer from './live-player';
+import MessageDialog from './chat/message-dialog';
 import { RoomDetail } from './types';
+
+const defaultRoomDetail: RoomDetail = { numUsers: null, history: [], users: [], host: null, isHostInRoom: false, streamCode: undefined };
 
 export const Component = () => {
   const navigate = useNavigate();
@@ -21,7 +23,7 @@ export const Component = () => {
   const { namespaces, selected, setSelected } = useNamespaceStore();
 
   const [nsSocket, setNsSocket] = useState<Socket>();
-  const [roomDetail, setRoomDetail] = useState<RoomDetail>({ numUsers: null, history: [], users: [], host: null, isHostInRoom: false, streamCode: undefined });
+  const [roomDetail, setRoomDetail] = useState<RoomDetail>(defaultRoomDetail);
   const [joinError, setJoinError] = useState<string | null>(null);
 
   const joinRoom = async (roomTitle: string, namespaceId: number, currentUser: User) => {
@@ -66,12 +68,12 @@ export const Component = () => {
 
   const onMessageSend = (newMessage: string) => {
     if (nsSocket && selected?.namespace && user && selected?.room) {
-      const request: ChatHistoryItem = {
+      const request: Message = {
         userName: user.name,
         date: Date.now(),
         newMessage: newMessage,
-        selectedNsId: selected.namespace.id,
-        selectedRoomTitle: selected.room.roomTitle,
+        namespaceId: selected.namespace.id,
+        roomTitle: selected.room.roomTitle,
         image: user.image || undefined,
       };
       nsSocket.emit('newMessageToRoom', request);
@@ -83,7 +85,6 @@ export const Component = () => {
     if (namespaces.length) {
       const foundNs = namespaces.find((ns) => ns.endpoint?.replace('/', '') === namespace);
       const foundRoom = foundNs?.rooms?.find((room) => String(room.roomId) === roomId);
-
       if (foundRoom && foundNs) {
         setSelected({ namespace: foundNs, room: foundRoom });
         const isDifferentRoom = selected?.room.roomId !== foundRoom.roomId;
@@ -98,8 +99,8 @@ export const Component = () => {
 
   useEffect(() => {
     if (nsSocket) {
-      nsSocket.on('messageToRoom', (newMessage: ChatHistoryItem) => {
-        // TODO：可以做 debounce 避免大量更新
+      nsSocket.on('messageToRoom', (newMessage: Message) => {
+        // TODO: 可以做 debounce 避免多次渲染
         setRoomDetail((prev) => ({ ...prev, history: [...prev.history, newMessage] }));
       });
 
@@ -163,9 +164,9 @@ export const Component = () => {
         )}
       </div>
 
-      <main className="flex flex-col xl:flex-row gap-4 transition-all flex-1 md:overflow-hidden">
+      <main className="flex flex-col xl:flex-row gap-4 transition-all flex-1 xl:overflow-hidden">
         {/* 視訊串流 */}
-        <VideoStream
+        <LivePlayer
           nsSocket={nsSocket}
           roomDetail={roomDetail}
           namespaceId={selected.namespace.id}
@@ -175,7 +176,7 @@ export const Component = () => {
         />
 
         {/* 聊天室 */}
-        <div className="flex-1 h-[20rem] md:h-auto flex flex-col gap-4">
+        <div className="flex-1 h-[20rem] max-h-[20rem] xl:h-auto xl:max-h-[unset] flex flex-col gap-4">
           <MessageDialog messages={roomDetail.history} />
           <MessageInput onMessageSend={onMessageSend} disabled={!user} />
         </div>
