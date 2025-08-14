@@ -1,14 +1,7 @@
-// src/streamKey.ts
 import crypto from 'node:crypto';
 
 // Base64URL（適合放 URL/查詢字串，不會有 + / =）
 const b64url = (buf: Buffer) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-
-type StreamKeyPayload = {
-  userId: string;
-  ts: number; // UNIX 秒
-  nonce: string; // 隨機鹽
-};
 
 // ===== Server 設定 =====
 const SECRET = process.env.STREAM_KEY_SECRET!; // 務必放環境變數

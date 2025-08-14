@@ -6,9 +6,7 @@ const db = new Database(process.env.DATABASE_URL || './database.db');
 
 export const auth = betterAuth({
   database: db,
-  emailAndPassword: {
-    enabled: true,
-  },
+  emailAndPassword: { enabled: true },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -16,15 +14,12 @@ export const auth = betterAuth({
     },
   },
   secret: process.env.BETTER_AUTH_SECRET!,
-  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3001',
-  trustedOrigins: [process.env.CLIENT_AUTH_URL || 'http://localhost:3000',],
+  trustedOrigins: [process.env.CLIENT_AUTH_URL!],
   callbacks: {
     signIn: {
       after: async (user: any, request: any) => {
-        // 對於 OAuth 登入，重定向到前端
-        return {
-          redirect: process.env.CLIENT_AUTH_URL || 'http://localhost:3000',
-        };
+        // 對於 OAuth 登入，redirect 到前端
+        return { redirect: process.env.CLIENT_AUTH_URL! };
       },
     },
   },

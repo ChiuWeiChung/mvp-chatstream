@@ -31,14 +31,13 @@ SockStream 是個模擬直播平台的練習專案，主要就是想把 **WebSoc
 - **Node.js**
 - **Express**
 - **Socket.io**
-- **better-auth**（支援 Google Provider 與 email/password 登入）
-- **SQLite (better-sqlite3)**  
-  > 僅用於配合 better-auth 的 OAuth 驗證需求，儲存使用者登入資料，沒有額外應用。
+- **better-auth** & **SQLite (better-sqlite3)**  
+  > better-sqlite3 僅用於配合 better-auth 驗證（儲存使用者登入資料）。
 
 ### 部署與啟動
 - 使用 **Docker** 進行前後端獨立容器化
 - 根目錄包含 `docker-compose.yml` 作為啟動入口
-- 前端 Dockerfile 內含 **RTMP Server Nginx Image**，用於推播與轉碼
+- 前端 Dockerfile 內含 **RTMP Server Nginx Image**，用於推播與串流
 
 ## 核心功能
 1. **使用者登入 / 登出**  
@@ -55,5 +54,56 @@ SockStream 是個模擬直播平台的練習專案，主要就是想把 **WebSoc
 6. **視訊播放（HLS）**  
    - 使用 HLS.js 於瀏覽器播放直播
 
-## 安裝與執行
-> 待補
+## 如何啟動 (Production mode)
+1. 請在 server 資料夾底下新增 .env 
+2. `.env` 配置如下
+
+```dotenv
+BETTER_AUTH_SECRET=p7YF5/SchUxSTQ2KSKRQk0P9UgG3PIX57dIe4Xm+UUc=
+BETTER_AUTH_URL=http://localhost:3001 # 後端 Server 的 URL
+CLIENT_AUTH_URL=http://localhost:8080 # 前端 Server 的 URL
+STREAM_KEY_SECRET=vcnKDJL8eSZ8Z5cmxQxUHSOAS8qVPZcIfotYds/Gx40=
+```
+
+其中的 `BETTER_AUTH_SECRET` 是給 better-auth 加密使用，另外 `STREAM_KEY_SECRET` 則是用來產生串流通道金鑰所需的 secret key，都可以在 terminal 透過指令產生
+
+```bash
+openssl rand -base64 32
+```
+
+3. 請在 server 資料夾底下透過下方指令新增 database.db 
+
+   ```console
+   npx @better-auth/cli migrate
+   ```
+4. 請在 client 資料夾底下新增 .env 
+5. `.env` 配置如下
+
+   ```dotenv
+   VITE_API_URL=http://localhost:3001 #需對應 server 設定檔中的 CLIENT_AUTH_URL
+   ```
+
+6. 在專案跟目錄下執行 `docker-compose.yml`
+
+   ```console
+   docker-compose up --build -d
+   ```
+
+## 可以改進的地方
+
+這個小小專案目的是在實現即時通訊與影像串流的功能，feature 確實實現了，但其實有些地方 (ex: 安全性，邊際效應等議題沒有考慮完全)，但就有點像是「輪子造好了」、「車子也會跑」，但這台車有些螺絲可能沒有拴
+緊，而且這台車只是個「滑板車」，所以在我看來還有許多可以改近修正的地方，未來有機會慢慢補足，以下是我覺得這個專案可以優化的地方
+
+1. 商業邏輯待修正
+   1. 目前只要是登入者可以在不同頻道之間新增房間，有點不直覺
+   2. 登入者應該要有專屬自己的房間登入者應該要有專屬自己的房間，登入人員可以在自己的房間新增所謂的「類別」，以此反映到不同的 namespace (頻道類別)
+2. 影音串流的延遲
+   1. 不管是 HLS 或是 DASH 的協議，多多少少都會有所謂的延遲，因此得從設定方面著墨，看還有哪些參數可以把延遲降低
+   2. 如果真的要達到低延遲，後續會研究一下 WebRTC 搭配 media server 來實現，待研究
+3. **頻道（namespace）** 與 **房間（room）** 的控管
+   1. 目前房間的資料僅透過 Server 變數來維護，當 Server 重啟後，房間資料就會遺失，後需需要透過 DB (比如說現在的 sqlite) 來管控
+4. 其他
+   1. 前端新增 Debounce 避免過度渲染
+   2. 加強 RTMP Server 推流驗證機制 (on connect/ on play 等)
+      1. 擴充 on connect / on play 等階段需處理的權限
+      2. 已被使用之 stream code 需要被註銷，避免重複利用

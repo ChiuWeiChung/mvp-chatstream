@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import namespaces from './data/namespaces';
 import { Server } from 'socket.io';
 import { Message, User } from './classes/Room';
@@ -43,14 +43,14 @@ app.get('/api/streamKey', (req, res) => {
 // 接收 RTMP Stream 推流請求(from Nginx-RTMP Server)，並驗證 streamKey (server to server，無關 client)
 app.get('/rtmp/on-publish', (req, res) => {
   const source = req.query;
-  const Query = z.object({
+  const querySchema = z.object({
     app: z.string().optional(),
     name: z.string(), // Stream Key
     addr: z.string().optional(),
     clientid: z.string().optional(),
   });
 
-  const parsed = Query.safeParse(source);
+  const parsed = querySchema.safeParse(source);
   if (!parsed.success) return res.status(400).send('bad query');
 
   const { name: streamKey } = parsed.data;
