@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { MediaController, MediaControlBar, MediaPlayButton, MediaMuteButton, MediaTimeRange, MediaTimeDisplay, MediaFullscreenButton } from 'media-chrome/react';
-import { CopyIcon, MonitorStopIcon, MonitorUpIcon, ScreenShareOffIcon } from 'lucide-react';
+import { CopyIcon, LoaderIcon, MonitorStopIcon, MonitorUpIcon, ScreenShareOffIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Socket } from 'socket.io-client';
@@ -20,25 +20,21 @@ export default function LivePlayer(props: LivePlayerProps) {
   const { roomDetail, userIsHost, nsSocket, namespaceId, onStreamCodeUpdate, roomTitle } = props;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string | undefined>(undefined);
+  const [generatedKey, setGeneratedKey] = useState<string | undefined>(undefined);
 
   // 直播設定
   const handleStreamingSetup = async () => {
     if (roomDetail.host) {
       const apiUrl = import.meta.env.VITE_API_URL;
-      const res = await fetch(`${apiUrl}/api/streamKey?userId=${roomDetail.host.id}`);
-      const { streamKey } = (await res.json()) as { streamKey: { key: string; expiresAt: number } };
-      setGeneratedCode(streamKey.key);
+      const params = new URLSearchParams({
+        namespaceId: namespaceId.toString(),
+        hostId: roomDetail.host.id,
+        roomTitle,
+      });
+      const res = await fetch(`${apiUrl}/api/streamKey?${params.toString()}`);
+      const { key } = (await res.json()) as { key: string; expiresAt: number };
+      setGeneratedKey(key);
       setIsDialogOpen(true);
-    }
-  };
-
-  // 開始直播
-  const handleStartStreaming = async () => {
-    if (nsSocket && generatedCode) {
-      const ackResponse = await nsSocket.emitWithAck('startStreaming', { code: generatedCode, namespaceId, roomTitle });
-      if (ackResponse.success) setIsDialogOpen(false);
-      else console.error('Start streaming error:', ackResponse.error);
     }
   };
 
@@ -102,10 +98,11 @@ export default function LivePlayer(props: LivePlayerProps) {
     } else console.error('Hls is not supported');
   }, [roomDetail.streamCode, roomDetail.host]);
 
-  // 如果 host 開始直播，則更新 roomDetail.streamCode
+  // 監聽 streamCodeUpdate 事件
   useEffect(() => {
     if (nsSocket) {
       nsSocket.on('streamCodeUpdate', (code?: string) => {
+        if (code) setIsDialogOpen(false);
         onStreamCodeUpdate(code);
       });
     }
@@ -145,35 +142,42 @@ export default function LivePlayer(props: LivePlayerProps) {
       </MediaController>
 
       <Dialog open={isDialogOpen}>
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>您的串流金鑰已產生</DialogTitle>
-            <DialogDescription className="text-center break-all p-4 bg-muted rounded-md">{generatedCode}</DialogDescription>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (generatedCode) {
-                  navigator.clipboard.writeText(generatedCode);
-                  alert('已複製到剪貼簿');
-                }
-              }}
-            >
-              <CopyIcon />
-              複製
-            </Button>
-            <DialogDescription>
-              <p>1. 複製 Stream Code 到您的推播軟體（例如 OBS）並啟動推流。</p>
-              <p>2. 回到本頁面，點擊「開始直播」按鈕，即可正式開播。</p>
-            </DialogDescription>
+            <DialogTitle>您的串流金鑰如下</DialogTitle>
+            <div className="flex items-center justify-center gap-2">
+              <DialogDescription className="text-center break-all p-4 bg-muted rounded-md">{generatedKey}</DialogDescription>
+              <Button
+                variant="outline"
+                className="h-full"
+                onClick={() => {
+                  if (generatedKey) {
+                    navigator.clipboard.writeText(generatedKey);
+                    alert('已複製到剪貼簿');
+                  }
+                }}
+              >
+                <CopyIcon />
+                複製
+              </Button>
+            </div>
           </DialogHeader>
+
+          <DialogDescription className=" flex flex-col gap-2">
+            <span>1. 複製 Stream Code 到您的推播軟體（例如 OBS）並啟動推流。</span>
+            <span>2. 系統將偵測推流後自動開始直播。</span>
+          </DialogDescription>
+          <div className="flex items-center justify-center gap-2">
+            <LoaderIcon className="animate-spin" />
+            <span className="text-sm text-center text-muted-foreground">正在等待推流設定...</span>
+          </div>
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="destructive" onClick={() => setIsDialogOpen(false)} className="w-full">
                 取消
               </Button>
             </DialogClose>
-            <Button onClick={handleStartStreaming}>已完成推流設定，立即直播</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

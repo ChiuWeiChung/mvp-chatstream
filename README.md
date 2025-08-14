@@ -34,6 +34,11 @@ SockStream 是個模擬直播平台的練習專案，主要就是想把 **WebSoc
 - **better-auth** & **SQLite (better-sqlite3)**  
   > better-sqlite3 僅用於配合 better-auth 驗證（儲存使用者登入資料）。
 
+### 環境 (By Docker Image)
+- **node:20-alpine**
+- **tiangolo/nginx-rtmp**
+  > 1.處理靜態網頁的 Proxy 以及串流推播 (RTMP)
+
 ### 部署與啟動
 - 使用 **Docker** 進行前後端獨立容器化
 - 根目錄包含 `docker-compose.yml` 作為啟動入口
@@ -80,7 +85,7 @@ openssl rand -base64 32
 5. `.env` 配置如下
 
    ```dotenv
-   VITE_API_URL=http://localhost:3001 #需對應 server 設定檔中的 CLIENT_AUTH_URL
+   VITE_API_URL=http://localhost:3001 #需對應 server 設定檔中的 BETTER_AUTH_URL
    ```
 
 6. 在專案跟目錄下執行 `docker-compose.yml`
@@ -88,6 +93,9 @@ openssl rand -base64 32
    ```console
    docker-compose up --build -d
    ```
+7. 使用瀏覽器連線: http://localhost:8080
+8. 準備推播工具 (ex: OBS)
+   1. 以下以 OBS 舉例
 
 ## 可以改進的地方
 

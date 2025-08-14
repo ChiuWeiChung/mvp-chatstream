@@ -12,7 +12,7 @@ config();
 import { auth } from './lib/auth';
 import { toNodeHandler } from 'better-auth/node';
 import { createStreamKey, verifyStreamKey } from './lib/crypto';
-import { getCurrentPosition } from './lib/utils';
+import { getCurrentPosition, querySchema, waitForPlaylistReady } from './lib/utils';
 
 const app = express();
 const PORT = 3001;
@@ -22,7 +22,7 @@ const expressServer = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-// 設定 CORS 中間件
+// 設定 CORS middleware
 app.use(
   cors({
     origin: [process.env.CLIENT_AUTH_URL || 'http://localhost:3000'],
@@ -30,39 +30,65 @@ app.use(
   }),
 );
 
-// 設定 better-auth 路由 - 使用官方的 toNodeHandler
+// 設定 better-auth routes - 使用官方的 toNodeHandler
 app.all('/api/auth/*', toNodeHandler(auth));
 
 // 接收產生 streamKey 的請求，並回傳給 user 使用 (client to server，無關 nginx)
 app.get('/api/streamKey', (req, res) => {
-  const { userId } = req.query;
-  const streamKey = createStreamKey(userId as string);
-  res.json({ streamKey });
+  const { namespaceId, roomTitle, hostId } = req.query;
+  const payload = { namespaceId: Number(namespaceId), roomTitle: String(roomTitle), hostId: String(hostId) };
+  const result = createStreamKey(payload);
+  res.json(result);
 });
 
 // 接收 RTMP Stream 推流請求(from Nginx-RTMP Server)，並驗證 streamKey (server to server，無關 client)
-app.get('/rtmp/on-publish', (req, res) => {
+app.get('/rtmp/on-publish', async (req, res) => {
   const source = req.query;
-  const querySchema = z.object({
-    app: z.string().optional(),
-    name: z.string(), // Stream Key
-    addr: z.string().optional(),
-    clientid: z.string().optional(),
-  });
-
   const parsed = querySchema.safeParse(source);
   if (!parsed.success) return res.status(400).send('bad query');
 
   const { name: streamKey } = parsed.data;
   const result = verifyStreamKey(streamKey, { ttlSec: 30 * 60 });
-
   if (!result.ok) return res.status(403).send(`deny: ${result.reason}`);
+
+  const { namespaceId, roomTitle, hostId } = result.payload;
+  const { currentNamespace, currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
+  if (!currentNamespace || !currentRoom) return res.status(403).send('deny: namespace or room not found');
+  if (currentRoom.host?.id && currentRoom.host.id !== hostId) return res.status(403).send('deny: host mismatch');
+  
+  res.status(204).end(); // Note: 先回覆 204 給 Nginx，讓 Nginx 允許推流
+
+  // Note: 因為允許推流後，仍要等待 m3u8 這個檔案出現後，才能廣播 streamCodeUpdate 事件，避免 client 串流失敗
+  const isReady = await waitForPlaylistReady(streamKey, 5000, 250);
+  if (isReady) {
+    currentRoom.updateStreamKey(streamKey);
+    const nsp = io.of(currentNamespace.endpoint);
+    nsp.in(currentRoom.roomTitle).emit('streamCodeUpdate', streamKey);
+  }
+});
+
+// 處理推流停止請求(from Nginx-RTMP Server)，並驗證 streamKey (server to server，無關 client)
+app.get('/rtmp/on-publish-done', (req, res) => {
+  const source = req.query;
+  const parsed = querySchema.safeParse(source);
+  if (!parsed.success) return res.status(204).end(); // 不影響 Nginx
+  const { name: streamKey } = parsed.data;
+
+  const result = verifyStreamKey(streamKey, { ignoreTtl: true }); // 僅解 payload，不做 TTL 檢查
+  if (!result.ok) return res.status(204).end(); // 不影響 Nginx
+
+  const { namespaceId, roomTitle } = result.payload;
+  const { currentNamespace, currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
+  if (currentNamespace && currentRoom) {
+    const nsp = io.of(currentNamespace.endpoint);
+    currentRoom.updateStreamKey(undefined);
+    nsp.in(currentRoom.roomTitle).emit('streamCodeUpdate', undefined);
+  }
+
   return res.status(204).end();
 });
 
-// Mount express json middleware after Better Auth handler
-// or only apply it to routes that don't interact with Better Auth
-app.use(express.json());
+
 
 // 創建 Socket.IO 伺服器，允許 CORS
 const io = new Server(expressServer, {
@@ -102,7 +128,6 @@ namespaces.forEach((namespace) => {
   nsp.on('connection', (nsSocket) => {
     // ====== 接收用戶加入房間的請求 ======
     nsSocket.on('joinRoom', async ({ roomTitle, namespaceId, user }, ackCallback) => {
-      console.log(`🔍 joinRoom request: user="${user.name}", socketId="${nsSocket.id}", room="${roomTitle}"`);
       try {
         const { currentNamespace, currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
 
@@ -156,7 +181,7 @@ namespaces.forEach((namespace) => {
           isHostInRoom,
           streamCode: currentRoom.code,
         };
-        
+
         nsp.in(roomTitle).emit('roomUsersUpdate', { roomUsers, isHostInRoom });
         ackCallback(payload);
 
@@ -179,7 +204,6 @@ namespaces.forEach((namespace) => {
     // ====== 處理新增房間的請求 ======
     nsSocket.on('createRoom', ({ roomTitle, namespaceId, host }, ackCallback) => {
       try {
-        // const currentNamespace = namespaces[namespaceId];
         const { currentNamespace, currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
         if (!currentNamespace) {
           ackCallback({ success: false, error: 'Namespace not found' });
@@ -216,16 +240,6 @@ namespaces.forEach((namespace) => {
         console.error('Error creating room:', error);
         ackCallback({ success: false, error: 'Failed to create room' });
       }
-    });
-
-    // ====== 接收 host 發出的開始直播請求，並回傳 code ======
-    nsSocket.on('startStreaming', ({ namespaceId, code, roomTitle }, ackCallback) => {
-      const { currentRoom } = getCurrentPosition({ namespaceId, roomTitle });
-      if (currentRoom) {
-        currentRoom.updateStreamKey(code);
-        nsp.in(currentRoom.roomTitle).emit('streamCodeUpdate', code);
-        ackCallback({ success: true });
-      } else ackCallback({ success: false, error: 'Room not found' });
     });
 
     // ====== 接收 host 發出的停止直播請求 ======
