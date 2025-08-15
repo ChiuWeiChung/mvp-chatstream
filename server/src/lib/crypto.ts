@@ -1,6 +1,7 @@
 // crypto.ts
 import crypto from 'node:crypto';
 import z from 'zod';
+import { payloadSchema } from './utils';
 
 const SECRET = process.env.STREAM_KEY_SECRET!;
 export const DEFAULT_TTL_SEC = 60 * 60; // 1hr
@@ -29,11 +30,9 @@ function stableStringify(obj: Record<string, unknown>): string {
   return JSON.stringify(sorted);
 }
 
-const payloadSchema = z.object({ namespaceId: z.number(), roomTitle: z.string(), hostId: z.string() });
-type StreamPayload = z.infer<typeof payloadSchema>; 
 
 // key 內容：<payloadB64>.<ts>.<nonce>.<sigB64>
-export function createStreamKey(payload: StreamPayload, ttlSec = DEFAULT_TTL_SEC) {
+export function createStreamKey(payload: z.infer<typeof payloadSchema>, ttlSec = DEFAULT_TTL_SEC) {
   if (!SECRET) throw new Error('STREAM_KEY_SECRET is not set');
 
   const ts = Math.floor(Date.now() / 1000); // UNIX 秒
@@ -56,7 +55,7 @@ export function createStreamKey(payload: StreamPayload, ttlSec = DEFAULT_TTL_SEC
 export function verifyStreamKey(
   key: string,
   { now = Math.floor(Date.now() / 1000), ttlSec = DEFAULT_TTL_SEC, ignoreTtl = false }: { now?: number; ttlSec?: number; ignoreTtl?: boolean } = {},
-): { ok: true; payload: StreamPayload } | { ok: false; reason: string } {
+): { ok: true; payload: z.infer<typeof payloadSchema> } | { ok: false; reason: string } {
   if (!SECRET) return { ok: false, reason: 'secret-missing' };
 
   const parts = key.split('.');
@@ -82,7 +81,7 @@ export function verifyStreamKey(
   // 還原 payload
   try {
     const json = b64urlToBuf(payloadB64).toString('utf8');
-    const payload = JSON.parse(json) ;
+    const payload = JSON.parse(json);
     const parsed = payloadSchema.safeParse(payload);
     if (!parsed.success) return { ok: false, reason: 'payload-shape' };
     return { ok: true, payload: parsed.data };

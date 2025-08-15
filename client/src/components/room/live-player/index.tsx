@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Socket } from 'socket.io-client';
 import { RoomDetail } from '@/components/room/types';
+import { toast } from 'sonner';
 
 interface LivePlayerProps {
   roomDetail: RoomDetail;
@@ -153,7 +154,7 @@ export default function LivePlayer(props: LivePlayerProps) {
                 onClick={() => {
                   if (generatedKey) {
                     navigator.clipboard.writeText(generatedKey);
-                    alert('已複製到剪貼簿');
+                    toast.success('已複製到剪貼簿');
                   }
                 }}
               >

@@ -6,7 +6,7 @@ interface AuthState {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  
+
   // Actions
   initialize: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -24,11 +24,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     try {
       set({ isLoading: true });
-      
-     
-      
-      const {data: session} = await authClient.getSession();
-      
+      const { data: session } = await authClient.getSession();
+
       if (session) {
         set({
           user: session.user,
@@ -46,7 +43,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to initialize auth:', error);
-      console.error('Auth client baseURL:', 'http://localhost:3001');
       // 即使失敗也要設定 loading 為 false，避免卡在 loading 狀態
       set({
         user: null,
@@ -59,10 +55,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signInWithGoogle: async () => {
     try {
-      await authClient.signIn.social({
-        provider: "google",
+      const { error } = await authClient.signIn.social({
+        provider: 'google',
         callbackURL: window.location.origin,
       });
+      if (error) throw new Error(error.message || '登入失敗');
     } catch (error) {
       console.error('Failed to sign in with Google:', error);
       throw error;
@@ -71,22 +68,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signInWithEmail: async (email: string, password: string) => {
     try {
-      const { error } = await authClient.signIn.email({
-        email,
-        password,
-      });
-      
-      if (error) {
-        console.error('Email sign in error:', error);
-        throw new Error(error.message);
-      }
-      
-      // 重新初始化以獲取最新的用戶資料
-      await get().initialize();
-      
-      // 認證成功後重新連接 Socket，確保連接狀態正確
-      // socketReconnect();
-      // socket.connect();
+      const { error } = await authClient.signIn.email({ email, password });
+      if (error) throw new Error(error.message || '登入失敗');      
+      await get().initialize(); // 用途: 重新初始化以獲取最新的用戶資料，主要是希望可以 redirect 到首頁
     } catch (error) {
       console.error('Failed to sign in with email:', error);
       throw error;
@@ -100,18 +84,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         password,
         name,
       });
-      
-      if (error) {
-        console.error('Email sign up error:', error);
-        throw new Error(error.message);
-      }
-      
-      // 重新初始化以獲取最新的用戶資料
-      await get().initialize();
-      
-      // 認證成功後重新連接 Socket，確保連接狀態正確
-      // socketReconnect();
-      // socket.connect();
+      if (error) throw new Error(error.message || '註冊失敗');
+      await get().initialize(); // 用途: 重新初始化以獲取最新的用戶資料，主要是希望可以 redirect 到首頁
     } catch (error) {
       console.error('Failed to sign up with email:', error);
       throw error;
@@ -127,8 +101,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: false,
         isLoading: false,
       });
-      
-      // 登出成功後重定向到登入頁面
+
+      // 登出成功後 redirect 到登入頁面
       window.location.href = '/auth';
     } catch (error) {
       console.error('Failed to sign out:', error);
@@ -139,7 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: false,
         isLoading: false,
       });
-      // 強制重定向到登入頁面
+      // 強制 redirect 到登入頁面
       window.location.href = '/auth';
     }
   },

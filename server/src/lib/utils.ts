@@ -1,12 +1,16 @@
 import namespaces from '../data/namespaces';
 import { z } from 'zod';
 
+// 用於 Nginx-RTMP Server 的 query schema
 export const querySchema = z.object({
   app: z.string().optional(),
   name: z.string(),
   addr: z.string().optional(),
   clientid: z.string().optional(),
 });
+
+// 產生 StreamKey 的 payload schema
+export const payloadSchema = z.object({ namespaceId: z.coerce.number(), roomTitle: z.string(), hostId: z.string() });
 
 export const getCurrentPosition = ({ namespaceId, roomTitle }: { namespaceId: number; roomTitle: string }) => {
   const currentNamespace = namespaces[namespaceId];

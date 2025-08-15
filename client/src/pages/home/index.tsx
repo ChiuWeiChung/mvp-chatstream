@@ -10,7 +10,7 @@ export const Home = () => {
   const { user, signOut } = useAuthStore();
 
   const handleSignOut = async () => {
-    await signOut(); // auth store 會處理重定向和錯誤
+    await signOut(); // auth store 會處理 redirect 和錯誤
   };
 
   return (

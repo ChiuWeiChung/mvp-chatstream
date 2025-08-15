@@ -7,6 +7,7 @@ import { Namespace } from '@/components/sidebar/types';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '@/hooks/use-auth-store';
 import { User } from '@/lib/auth';
+import { toast } from 'sonner';
 
 interface AddRoomDialogProps {
   namespace: Namespace;
@@ -39,6 +40,7 @@ export function AddRoomDialog({ namespace, onCreateRoom }: AddRoomDialogProps) {
     try {
       const result = await onCreateRoom(namespace.id, roomTitle.trim(), user);
       if (result.success && result.room) {
+        toast.success(`房間(${roomTitle.trim()})建立成功`);
         setRoomTitle('');
         setOpen(false);
         navigate(`${namespace.endpoint}/${result.room.roomId}`);

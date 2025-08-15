@@ -3,6 +3,8 @@ import { Home } from '@/pages/home';
 import { Auth } from '@/pages/auth';
 import { NotFoundPage } from '@/components/not-found';
 import { ProtectedRoute } from '@/components/protected-route';
+import { Toaster } from '@/components/ui/sonner';
+
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +16,7 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Home />
+        <Toaster position="top-center" />
       </ProtectedRoute>
     ),
     errorElement: <NotFoundPage />,

@@ -68,6 +68,7 @@ BETTER_AUTH_SECRET=p7YF5/SchUxSTQ2KSKRQk0P9UgG3PIX57dIe4Xm+UUc=
 BETTER_AUTH_URL=http://localhost:3001 # 後端 Server 的 URL
 CLIENT_AUTH_URL=http://localhost:8080 # 前端 Server 的 URL
 STREAM_KEY_SECRET=vcnKDJL8eSZ8Z5cmxQxUHSOAS8qVPZcIfotYds/Gx40=
+PORT=3001
 ```
 
 其中的 `BETTER_AUTH_SECRET` 是給 better-auth 加密使用，另外 `STREAM_KEY_SECRET` 則是用來產生串流通道金鑰所需的 secret key，都可以在 terminal 透過指令產生
