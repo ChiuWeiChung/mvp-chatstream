@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Params, useParams } from 'react-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Navigate, Params, useParams } from 'react-router';
 import { io, Socket } from 'socket.io-client';
 import { useNamespaceStore } from '@/hooks/use-namespace-store';
-import { useNavigate } from 'react-router';
 import { Message } from '@/components/sidebar/types';
 import { UserIcon } from 'lucide-react';
 import { useAuthStore } from '@/hooks/use-auth-store';
@@ -12,115 +11,119 @@ import Footer from '@/components/footer';
 import MessageInput from './chat/message-input';
 import LivePlayer from './live-player';
 import MessageDialog from './chat/message-dialog';
-import { RoomDetail } from './types';
-
-const defaultRoomDetail: RoomDetail = { numUsers: null, history: [], users: [], host: null, isHostInRoom: false, streamCode: undefined };
+import { EmitJoinRoomResponse, RoomDetail } from './types';
 
 export const Component = () => {
-  const navigate = useNavigate();
   const { namespace, roomId } = useParams<Params>();
   const { user } = useAuthStore();
-  const { namespaces, selected, setSelected } = useNamespaceStore();
-
+  const { namespaces } = useNamespaceStore();
   const [nsSocket, setNsSocket] = useState<Socket>();
-  const [roomDetail, setRoomDetail] = useState<RoomDetail>(defaultRoomDetail);
+  const [roomDetail, setRoomDetail] = useState<RoomDetail>();
   const [joinError, setJoinError] = useState<string | null>(null);
 
-  const joinRoom = async (roomTitle: string, namespaceId: number, currentUser: User) => {
-    try {
-      // 清除舊 socket
-      nsSocket?.disconnect();
+  // 當前 namespace & room
+  const current = useMemo(() => {
+    const foundNs = namespaces.find((ns) => ns.endpoint?.replace('/', '') === namespace);
+    const foundRoom = foundNs?.rooms?.find((room) => String(room.roomId) === roomId);
+    if (!foundRoom || !foundNs) return null;
+    return { namespace: foundNs, room: foundRoom };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [namespace, roomId]); // 
 
-      const currentNamespace = namespaces.find((ns) => ns.id === namespaceId);
-      if (!currentNamespace) throw new Error(`Namespace with id ${namespaceId} not found`);
-
-      const namespaceSocket = io(`${socketUrl}${currentNamespace.endpoint}`);
-
-      const emitRequest = { roomTitle, namespaceId, user: currentUser };
-      const ackResponse = await namespaceSocket.emitWithAck('joinRoom', emitRequest);
-
-      if (!ackResponse.success) {
-        namespaceSocket.disconnect();
-        setJoinError(ackResponse.error || '加入房間失敗');
-      } else {
-        const { numUsers, history, users, host, isHostInRoom, streamCode } = ackResponse;
-        setRoomDetail({
-          numUsers: numUsers || 0,
-          history: history || [],
-          users: users || [],
-          host: host || null,
-          isHostInRoom: isHostInRoom || false,
-          streamCode: streamCode || undefined,
-        });
-
-        setJoinError(null); // 清除錯誤訊息
-        setNsSocket(namespaceSocket); // 設定當前 namespace socket
+  const joinRoom = useCallback(
+    async (request: { endpoint: string; namespaceId: number; roomTitle: string }) => {
+      try {
+        const { endpoint, namespaceId, roomTitle } = request;
+        const namespaceSocket = io(`${socketUrl}${endpoint}`);
+        const emitRequest = { roomTitle, namespaceId, user };
+        const ackResponse = (await namespaceSocket.emitWithAck('joinRoom', emitRequest)) as EmitJoinRoomResponse;
+        
+        if (!ackResponse.success) {
+          namespaceSocket.disconnect();
+          setJoinError(ackResponse.error || '加入房間失敗');
+        } else {
+          setRoomDetail({ ...ackResponse, roomTitle });
+          setJoinError(null); // 清除錯誤訊息
+          setNsSocket(namespaceSocket); // 設定當前 namespace socket
+        }
+      } catch (error) {
+        setJoinError('連線失敗，請稍後再試');
+        console.error('Join room error:', error);
       }
-    } catch (error) {
-      setJoinError('連線失敗，請稍後再試');
-      console.error('Join room error:', error);
-    }
-  };
-
-  const handleStreamCodeUpdate = useCallback((code?: string) => {
-    setRoomDetail((prev) => ({ ...prev, streamCode: code }));
-  }, []);
+    },
+    [user],
+  );
 
   const onMessageSend = (newMessage: string) => {
-    if (nsSocket && selected?.namespace && user && selected?.room) {
+    if (nsSocket && current && user) {
       const request: Message = {
         userName: user.name,
         date: Date.now(),
         newMessage: newMessage,
-        namespaceId: selected.namespace.id,
-        roomTitle: selected.room.roomTitle,
+        namespaceId: current.namespace.id,
+        roomTitle: current.room.roomTitle,
         image: user.image || undefined,
       };
       nsSocket.emit('newMessageToRoom', request);
     }
   };
 
+  // 停止直播
+  const stopStreamingHandler = async () => {
+    if (nsSocket && roomDetail && current) {
+      const ackResponse = await nsSocket.emitWithAck('stopStreaming', { namespaceId: current.namespace.id, roomTitle: roomDetail.roomTitle });
+      if (!ackResponse.success) console.error('Stop streaming error:', ackResponse.error);
+    }
+  };
+
   // 檢查使用者身份並處理房間加入
   useEffect(() => {
-    if (namespaces.length) {
-      const foundNs = namespaces.find((ns) => ns.endpoint?.replace('/', '') === namespace);
-      const foundRoom = foundNs?.rooms?.find((room) => String(room.roomId) === roomId);
-      if (foundRoom && foundNs) {
-        setSelected({ namespace: foundNs, room: foundRoom });
-        const isDifferentRoom = selected?.room.roomId !== foundRoom.roomId;
-        const isDifferentNamespace = selected?.namespace.id !== foundNs.id;
-        if (user && (isDifferentRoom || isDifferentNamespace || !nsSocket)) {
-          joinRoom(foundRoom.roomTitle, foundNs.id, user);
-        }
-      } else navigate('/notfound');
+    if (current) {
+      joinRoom({
+        endpoint: current.namespace.endpoint,
+        namespaceId: current.namespace.id,
+        roomTitle: current.room.roomTitle,
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [namespace, roomId, namespaces, navigate, setSelected, user]);
+  }, [current, joinRoom]);
 
   useEffect(() => {
     if (nsSocket) {
       nsSocket.on('messageToRoom', (newMessage: Message) => {
         // TODO: 可以做 debounce 避免多次渲染
-        setRoomDetail((prev) => ({ ...prev, history: [...prev.history, newMessage] }));
+        setRoomDetail((prev) =>{
+          if(!prev) return prev;
+          return { ...prev, history: [...prev.history, newMessage] };
+        });
       });
 
       nsSocket.on('roomUsersUpdate', ({ roomUsers, isHostInRoom }: { roomUsers: User[]; isHostInRoom: boolean }) => {
-        setRoomDetail((prev) => ({
-          ...prev,
-          numUsers: roomUsers.length,
-          users: roomUsers,
-          isHostInRoom: isHostInRoom,
-        }));
+        setRoomDetail((prev) =>{
+          if(!prev) return prev;
+          return {
+            ...prev,
+            numUsers: roomUsers.length,
+            users: roomUsers,
+            isHostInRoom: isHostInRoom,
+          }
+        });
+      });
+
+      nsSocket.on('streamCodeUpdate', (code?: string) => {
+        setRoomDetail((prev) => {
+          if (!prev) return prev;
+          return { ...prev, streamCode: code };
+        });
       });
 
       return () => {
-        // Note: disconnect 會觸發 Server 端 roomUsersUpdate 事件，如果 host 離開，會另外觸發 streamCodeUpdate 事件
         nsSocket.disconnect();
       };
     }
   }, [nsSocket]);
 
-  if (!selected || !user) return null;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!current) return <Navigate to="/not-found" replace />;
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 flex-1 overflow-auto">
       {joinError && (
@@ -136,16 +139,16 @@ export const Component = () => {
       <div className="flex flex-col gap-4">
         {/* 房間基本資訊 */}
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold">主題： {selected.namespace.name.toUpperCase()}</h1>
+          <h1 className="text-2xl font-bold">主題： {current.namespace.name.toUpperCase()}</h1>
           <section className="flex items-center gap-2 divide-x divide-muted-foreground [&>p]:pl-2 text-sm">
-            <p className="text-muted-foreground">Room: {selected.room.roomTitle}</p>
-            <p className="text-primary">Host: {roomDetail.host?.name || '--'}</p>
-            <p className="text-primary">房間人數: {roomDetail.numUsers}</p>
+            <p className="text-muted-foreground">Room: {current.room.roomTitle}</p>
+            <p className="text-primary">Host: {roomDetail?.host.name || '--'}</p>
+            <p className="text-primary">房間人數: {roomDetail?.numUsers || '--'}</p>
           </section>
         </div>
 
         {/* 房間成員列表 */}
-        {roomDetail.users.length > 0 && (
+        {!!roomDetail?.users.length && (
           <div className="bg-muted/50 p-3 rounded-md w-full">
             <h3 className="text-sm font-medium mb-2">房間成員</h3>
             <div className="flex flex-wrap gap-2">
@@ -166,18 +169,18 @@ export const Component = () => {
 
       <main className="flex flex-col xl:flex-row gap-4 transition-all flex-1 xl:overflow-hidden">
         {/* 視訊串流 */}
-        <LivePlayer
-          nsSocket={nsSocket}
-          roomDetail={roomDetail}
-          namespaceId={selected.namespace.id}
-          roomTitle={selected.room.roomTitle}
-          userIsHost={!!(roomDetail.host?.id && roomDetail.host.id === user?.id)}
-          onStreamCodeUpdate={handleStreamCodeUpdate}
-        />
+        {!!roomDetail && (
+          <LivePlayer
+            roomDetail={roomDetail}
+            namespaceId={current.namespace.id}
+            userIsHost={!!(roomDetail.host.id === user.id)}
+            stopStreamingHandler={stopStreamingHandler}
+          />
+        )}
 
         {/* 聊天室 */}
         <div className="flex-1 h-[20rem] max-h-[20rem] xl:h-auto xl:max-h-[unset] flex flex-col gap-4">
-          <MessageDialog messages={roomDetail.history} />
+          <MessageDialog messages={roomDetail?.history || []} />
           <MessageInput onMessageSend={onMessageSend} disabled={!user} />
         </div>
       </main>

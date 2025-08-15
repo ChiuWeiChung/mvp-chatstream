@@ -25,7 +25,7 @@ app.use(
 // ===== API Routes =====
 app.all('/api/auth/*', toNodeHandler(auth)); // better-auth routes
 app.use('/api', streamKeyRouter); // streamKey routes (提供 client 使用)
-app.use('/rtmp', rtmpRouter); // rtmp routes (提供 Nginx 推流使用)
+app.use('/rtmp', rtmpRouter); // rtmp routes (提供 Nginx 串流使用)
 
 // ===== Socket.IO =====
 const io = createIOServer(server, {

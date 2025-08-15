@@ -22,7 +22,7 @@ export type Namespace = {
   id: number;
   name: string;
   image: string;
-  endpoint?: string;
+  endpoint: string;
   rooms?: Room[];
 };
 

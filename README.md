@@ -113,6 +113,6 @@ openssl rand -base64 32
    1. 目前房間的資料僅透過 Server 變數來維護，當 Server 重啟後，房間資料就會遺失，後需需要透過 DB (比如說現在的 sqlite) 來管控
 4. 其他
    1. 前端新增 Debounce 避免過度渲染
-   2. 加強 RTMP Server 推流驗證機制 (on connect/ on play 等)
+   2. 加強 RTMP Server 串流驗證機制 (on connect/ on play 等)
       1. 擴充 on connect / on play 等階段需處理的權限
       2. 已被使用之 stream code 需要被註銷，避免重複利用

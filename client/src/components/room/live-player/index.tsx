@@ -4,33 +4,31 @@ import { MediaController, MediaControlBar, MediaPlayButton, MediaMuteButton, Med
 import { CopyIcon, LoaderIcon, MonitorStopIcon, MonitorUpIcon, ScreenShareOffIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Socket } from 'socket.io-client';
+// import { Socket } from 'socket.io-client';
 import { RoomDetail } from '@/components/room/types';
 import { toast } from 'sonner';
 
 interface LivePlayerProps {
   roomDetail: RoomDetail;
   userIsHost: boolean;
-  nsSocket?: Socket;
   namespaceId: number;
-  onStreamCodeUpdate: (code?: string) => void;
-  roomTitle: string;
+  stopStreamingHandler: () => void;
 }
 
 export default function LivePlayer(props: LivePlayerProps) {
-  const { roomDetail, userIsHost, nsSocket, namespaceId, onStreamCodeUpdate, roomTitle } = props;
+  const { roomDetail, userIsHost, namespaceId, stopStreamingHandler } = props;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [generatedKey, setGeneratedKey] = useState<string | undefined>(undefined);
 
   // 直播設定
   const handleStreamingSetup = async () => {
-    if (roomDetail.host) {
+    if (roomDetail.host && roomDetail.roomTitle) {
       const apiUrl = import.meta.env.VITE_API_URL;
       const params = new URLSearchParams({
         namespaceId: namespaceId.toString(),
         hostId: roomDetail.host.id,
-        roomTitle,
+        roomTitle: roomDetail.roomTitle,
       });
       const res = await fetch(`${apiUrl}/api/streamKey?${params.toString()}`);
       const { key } = (await res.json()) as { key: string; expiresAt: number };
@@ -39,20 +37,12 @@ export default function LivePlayer(props: LivePlayerProps) {
     }
   };
 
-  // 停止直播
-  const handleStopStreaming = async () => {
-    if (nsSocket) {
-      const ackResponse = await nsSocket.emitWithAck('stopStreaming', { namespaceId, roomTitle });
-      if (!ackResponse.success) console.error('Stop streaming error:', ackResponse.error);
-    }
-  };
-
   const renderHeader = () => {
     if (userIsHost) {
       return (
         <div className="flex items-center justify-center gap-4">
           {roomDetail.streamCode ? (
-            <Button variant="destructive" onClick={handleStopStreaming}>
+            <Button variant="destructive" onClick={stopStreamingHandler}>
               <MonitorStopIcon /> 停止直播
             </Button>
           ) : (
@@ -101,13 +91,8 @@ export default function LivePlayer(props: LivePlayerProps) {
 
   // 監聽 streamCodeUpdate 事件
   useEffect(() => {
-    if (nsSocket) {
-      nsSocket.on('streamCodeUpdate', (code?: string) => {
-        if (code) setIsDialogOpen(false);
-        onStreamCodeUpdate(code);
-      });
-    }
-  }, [nsSocket, onStreamCodeUpdate]);
+    if (!roomDetail.streamCode) setIsDialogOpen(false);
+  }, [roomDetail.streamCode]);
 
   if (!roomDetail.isHostInRoom) {
     return (
@@ -165,12 +150,12 @@ export default function LivePlayer(props: LivePlayerProps) {
           </DialogHeader>
 
           <DialogDescription className=" flex flex-col gap-2">
-            <span>1. 複製 Stream Code 到您的推播軟體（例如 OBS）並啟動推流。</span>
-            <span>2. 系統將偵測推流後自動開始直播。</span>
+            <span>1. 複製 Stream Code 到您的推播軟體（例如 OBS）並啟動串流。</span>
+            <span>2. 系統將偵測串流後自動開始直播。</span>
           </DialogDescription>
           <div className="flex items-center justify-center gap-2">
             <LoaderIcon className="animate-spin" />
-            <span className="text-sm text-center text-muted-foreground">正在等待推流設定...</span>
+            <span className="text-sm text-center text-muted-foreground">正在等待串流設定...</span>
           </div>
 
           <DialogFooter>

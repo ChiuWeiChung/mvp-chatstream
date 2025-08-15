@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/hooks/use-auth-store';
 import { LoaderIcon, LogIn, UserPlus } from 'lucide-react';
 
-export const Auth = () => {
+const Auth = () => {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail, isAuthenticated, isLoading, initialize } = useAuthStore();
   const [isSignUp, setIsSignUp] = useState(false);
   const [emailAuthForm, setEmailAuthForm] = useState({ email: '', password: '', name: '' });
@@ -126,3 +126,5 @@ export const Auth = () => {
     </div>
   );
 };
+
+export default Auth;

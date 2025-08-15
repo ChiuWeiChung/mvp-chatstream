@@ -6,10 +6,10 @@ import { MessageSquareDot } from 'lucide-react';
 import { useNamespaceStore } from '@/hooks/use-namespace-store';
 import io, { Socket } from 'socket.io-client';
 import { Link } from 'react-router';
-import { socketUrl,getSocket } from '@/lib/socket';
+import { socketUrl, getSocket } from '@/lib/socket';
 
 export default function SockStreamSidebar() {
-  const { resetNamespace, setNamespaces, namespaces, addRoomToNamespace } = useNamespaceStore();
+  const { setNamespaces, namespaces, addRoomToNamespace } = useNamespaceStore();
   const namespaceConnectionsRef = useRef<Socket[]>([]);
 
   useEffect(() => {
@@ -18,11 +18,7 @@ export default function SockStreamSidebar() {
     socket.on('nsList', (nsData: NsData) => {
       setNamespaces(nsData);
     });
-
-    return () => {
-      resetNamespace();
-    };
-  }, [resetNamespace, setNamespaces]);
+  }, [setNamespaces]);
 
   useEffect(() => {
     // 設定 namespace 的 listeners，處裡每個 namespace 的 roomCreated 事件

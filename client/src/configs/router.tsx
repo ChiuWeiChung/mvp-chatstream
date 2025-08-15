@@ -1,12 +1,11 @@
 import { createBrowserRouter } from 'react-router';
-import { Home } from '@/pages/home';
-import { Auth } from '@/pages/auth';
+import Layout from '@/pages/layout';
+import Auth from '@/pages/auth';
 import { NotFoundPage } from '@/components/not-found';
 import { ProtectedRoute } from '@/components/protected-route';
 import { Toaster } from '@/components/ui/sonner';
 
-
-export const router = createBrowserRouter([
+const router = createBrowserRouter([
   {
     path: '/auth',
     element: <Auth />,
@@ -15,13 +14,23 @@ export const router = createBrowserRouter([
     path: '/',
     element: (
       <ProtectedRoute>
-        <Home />
+        <Layout />
         <Toaster position="top-center" />
       </ProtectedRoute>
     ),
     errorElement: <NotFoundPage />,
     children: [
-      { path: ':namespace/:roomId', lazy: async () => await import('@/components/room') }, // 動態處理不同聊天室
+      {
+        id: 'landing-page',
+        index: true, // 預設首頁
+        lazy: async () => await import('@/pages/landing'),
+      },
+      {
+        id: 'room',
+        path: ':namespace/:roomId',
+        lazy: async () => await import('@/components/room'),
+        hydrateFallbackElement: <></>,
+      },
     ],
   },
 ]);
