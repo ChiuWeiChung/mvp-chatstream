@@ -59,44 +59,55 @@ SockStream 是個模擬直播平台的練習專案，主要就是想把 **WebSoc
 6. **視訊播放（HLS）**  
    - 使用 HLS.js 於瀏覽器播放直播
 
-## 如何啟動 (Production mode)
-1. 請在 server 資料夾底下新增 .env 
-2. `.env` 配置如下
+## Docker 啟動與環境參數設定指南
 
-```dotenv
-BETTER_AUTH_SECRET=p7YF5/SchUxSTQ2KSKRQk0P9UgG3PIX57dIe4Xm+UUc=
-BETTER_AUTH_URL=http://localhost:3001 # 後端 Server 的 URL
-CLIENT_AUTH_URL=http://localhost:8080 # 前端 Server 的 URL
-STREAM_KEY_SECRET=vcnKDJL8eSZ8Z5cmxQxUHSOAS8qVPZcIfotYds/Gx40=
-PORT=3001
+本專案的 所有環境變數 已經集中在 docker-compose.yml 中設定，不再使用 client/.env 與 server/.env。
+
+1. 環境參數設定位置
+
+請直接在 docker-compose.yml 中修改環境變數，分別對應 Server（Node.js） 與 Client（Vite）：
+
+```yaml
+version: "3.8"
+services:
+  server:
+    environment:
+      BETTER_AUTH_SECRET: "請填入32字節Base64密鑰"
+      BETTER_AUTH_URL: "http://localhost:3001"
+      CLIENT_AUTH_URL: "http://localhost:8080"
+      STREAM_KEY_SECRET: "請填入32字節Base64密鑰"
+      PORT: "3001"
+
+  client:
+    build:
+      args:
+        VITE_API_URL: "http://localhost:3001"
 ```
 
-其中的 `BETTER_AUTH_SECRET` 是給 better-auth 加密使用，另外 `STREAM_KEY_SECRET` 則是用來產生串流通道金鑰所需的 secret key，都可以在 terminal 透過指令產生
+* server.environment → 供 Node.js 後端在 runtime 讀取
+* client.build.args → 供 Vite 前端在 build 時 內嵌 API URL
+
+2. 產生密鑰 (BETTER_AUTH_SECRET / STREAM_KEY_SECRET)
+
+BETTER_AUTH_SECRET 與 STREAM_KEY_SECRET 必須是安全的隨機字串，可用以下指令產生 32 位元的 Base64 編碼字串：
 
 ```bash
 openssl rand -base64 32
 ```
 
-3. 請在 server 資料夾底下透過下方指令新增 database.db 
+3. 啟動與重建服務
 
-   ```console
-   npx @better-auth/cli migrate
-   ```
-4. 請在 client 資料夾底下新增 .env 
-5. `.env` 配置如下
+```bash
+docker-compose up --build -d
+```
 
-   ```dotenv
-   VITE_API_URL=http://localhost:3001 #需對應 server 設定檔中的 BETTER_AUTH_URL
-   ```
-
-6. 在專案跟目錄下執行 `docker-compose.yml`
-
-   ```console
-   docker-compose up --build -d
-   ```
-7. 使用瀏覽器連線: http://localhost:8080
-8. 準備推播工具 (ex: OBS)
-   1. 以下以 OBS 舉例
+4. 準備推播工具（例如 OBS Studio）
+   - 請安裝並啟動 [OBS Studio](https://obsproject.com/) 或其他支援 RTMP 推流的軟體。
+   - 在 OBS「設定」→「串流」中，選擇「自訂」作為服務類型，並填入 RTMP 伺服器網址（`rtmp://localhost:1935/live`）
+   - 網頁中按下「準備直播」後，將產生的 Stream Key 輸入至 OBS 的「串流金鑰」欄位。
+   - 設定好來源（如視訊、螢幕、麥克風等）後，點擊「開始串流」即可將影音推送到本專案的 RTMP 伺服器。
+   - 若需驗證串流是否成功，可於前端介面進入對應房間，應可即時看到 HLS 播放的直播畫面。
+   
 
 ## 可以改進的地方
 

@@ -77,9 +77,9 @@ export const Component = () => {
               <div className="p-2 bg-primary/10 rounded-lg">
                 <Shield className="h-6 w-6 text-primary" />
               </div>
-              <h4 className="text-xl font-semibold">身份驗證</h4>
+              <h4 className="text-xl font-semibold">簡易身份驗證</h4>
             </div>
-            <p className="text-muted-foreground">支援 Google OAuth 與 Email/Password 登入，並透過 better-auth 實作安全的身份驗證。</p>
+            <p className="text-muted-foreground">確保只有登入用戶能使用聊天室。由於非專案核心，採用簡化驗證流程，兼顧效能並防止濫用與攻擊。</p>
           </div>
 
           <div className="bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow">

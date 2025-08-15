@@ -91,7 +91,7 @@ export default function LivePlayer(props: LivePlayerProps) {
 
   // 監聽 streamCodeUpdate 事件
   useEffect(() => {
-    if (!roomDetail.streamCode) setIsDialogOpen(false);
+    if (roomDetail.streamCode) setIsDialogOpen(false);
   }, [roomDetail.streamCode]);
 
   if (!roomDetail.isHostInRoom) {

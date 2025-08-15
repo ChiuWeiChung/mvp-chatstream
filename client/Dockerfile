@@ -8,10 +8,12 @@ COPY package*.json ./
 
 # 安裝依賴
 RUN npm install
-
+# 接收來自 docker-compose 的 build args
+ARG VITE_API_URL
+# 選擇性：讓後續指令與工具在 build 階段也能以環境變數形式讀到
+ENV VITE_API_URL=${VITE_API_URL}
 # 複製所有檔案
 COPY . .
-
 # build
 RUN npm run build
 
