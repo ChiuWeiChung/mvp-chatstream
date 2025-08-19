@@ -60,13 +60,25 @@ SockStream 是個模擬直播平台的練習專案，主要就是想把 **WebSoc
 6. **視訊播放（HLS）**  
    - 使用 HLS.js 於瀏覽器播放直播
 
+**桌面版演示**
+![SockStream Demo](https://github.com/ChiuWeiChung/mvp-chatstream/blob/main/docs/desktop-demo.gif?raw=true)
+
+**手機版演示**
+![SockStream Demo](https://github.com/ChiuWeiChung/mvp-chatstream/blob/main/docs/mobile-demo.gif?raw=true)
+
+**RWD**
+![SockStream Demo](https://github.com/ChiuWeiChung/mvp-chatstream/blob/main/docs/rwd.gif?raw=true)
+
+
 ## Docker 啟動與環境參數設定指南
 
-本專案的 所有環境變數 已經集中在 docker-compose.yml 中設定，不再使用 client/.env 與 server/.env。
+## 如何啟動 (Production mode)
+
+本專案的所有環境變數皆已集中於 `docker-compose.yml` 設定，不再使用 `client/.env` 與 `server/.env`。
 
 1. 環境參數設定位置
 
-請直接在 docker-compose.yml 中修改環境變數，分別對應 Server（Node.js） 與 Client（Vite）：
+請直接於 `docker-compose.yml` 中修改環境變數，分別對應 Server（Node.js）與 Client（Vite）：
 
 ```yaml
 version: "3.8"
