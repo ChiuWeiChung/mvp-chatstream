@@ -4,7 +4,6 @@ import { MediaController, MediaControlBar, MediaPlayButton, MediaMuteButton, Med
 import { CopyIcon, LoaderIcon, MonitorStopIcon, MonitorUpIcon, ScreenShareOffIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-// import { Socket } from 'socket.io-client';
 import { RoomDetail } from '@/components/room/types';
 import { toast } from 'sonner';
 
