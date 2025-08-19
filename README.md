@@ -60,6 +60,15 @@ SockStream 是個模擬直播平台的練習專案，主要就是想把 **WebSoc
 6. **視訊播放（HLS）**  
    - 使用 HLS.js 於瀏覽器播放直播
 
+**桌面版演示**
+![SockStream Demo](https://github.com/ChiuWeiChung/mvp-chatstream/blob/main/docs/desktop-demo.gif?raw=true)
+
+**手機版演示**
+![SockStream Demo](https://github.com/ChiuWeiChung/mvp-chatstream/blob/main/docs/mobile-demo.gif?raw=true)
+
+**RWD**
+![SockStream Demo](https://github.com/ChiuWeiChung/mvp-chatstream/blob/main/docs/rwd.gif?raw=true)
+
 ## 如何啟動 (Production mode)
 1. 請在 server 資料夾底下新增 .env 
 2. `.env` 配置如下
